@@ -3,8 +3,6 @@ services:
   - type: pserv
     name: mipyme-db
     plan: free
-    databaseName: mipyme
-    databaseUser: mipyme_user
     region: oregon
 
   # Django Backend (Web Service)
