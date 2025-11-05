@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi PyME - Modo Offline</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .offline-container {
+            text-align: center;
+            max-width: 600px;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .offline-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            font-weight: 300;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+
+        .features {
+            text-align: left;
+            margin: 30px 0;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .features h3 {
+            margin-bottom: 15px;
+            color: #ffd700;
+        }
+
+        .features ul {
+            list-style: none;
+        }
+
+        .features li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .features li:last-child {
+            border-bottom: none;
+        }
+
+        .features li::before {
+            content: "✓ ";
+            color: #4ade80;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: blink 1.5s infinite;
+        }
+
+        .offline .status-dot {
+            background: #ef4444;
+        }
+
+        .online .status-dot {
+            background: #22c55e;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        .retry-button {
+            background: linear-gradient(45deg, #4ade80, #22c55e);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .retry-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .retry-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .pending-operations {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            text-align: left;
+        }
+
+        .pending-count {
+            color: #fbbf24;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .offline-container {
+                margin: 20px;
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .subtitle {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-icon">📱</div>
+
+        <h1>Modo Offline Activado</h1>
+        <p class="subtitle">Tu PyME sigue funcionando sin conexión a internet</p>
+
+        <div class="status-indicator" id="connectionStatus">
+            <div class="status-dot"></div>
+            <span id="statusText">Sin conexión a internet</span>
+        </div>
+
+        <div class="features">
+            <h3>Funcionalidades Disponibles Offline:</h3>
+            <ul>
+                <li>Consultar productos y precios</li>
+                <li>Ver información de clientes</li>
+                <li>Registrar ventas (se sincronizarán automáticamente)</li>
+                <li>Consultar inventario actual</li>
+                <li>Ver reportes guardados en caché</li>
+                <li>Acceder a datos financieros básicos</li>
+            </ul>
+        </div>
+
+        <div class="pending-operations" id="pendingOperations" style="display: none;">
+            <h3>⏳ Operaciones Pendientes</h3>
+            <p>Tienes <span class="pending-count" id="pendingCount">0</span> operaciones esperando sincronización.</p>
+            <p>Se enviarán automáticamente cuando se restaure la conexión.</p>
+        </div>
+
+        <button class="retry-button" onclick="checkConnection()" id="retryButton">
+            🔄 Verificar Conexión
+        </button>
+    </div>
+
+    <script>
+        let isOnline = navigator.onLine;
+        let pendingOperationsCount = 0;
+
+        // Verificar estado de conexión
+        function updateConnectionStatus() {
+            const statusIndicator = document.getElementById('connectionStatus');
+            const statusText = document.getElementById('statusText');
+            const retryButton = document.getElementById('retryButton');
+
+            if (navigator.onLine) {
+                statusIndicator.className = 'status-indicator online';
+                statusText.textContent = 'Conexión restaurada - Sincronizando...';
+                retryButton.textContent = '🏠 Volver a la App';
+                retryButton.onclick = () => window.location.href = '/';
+
+                // Intentar volver a la app después de 2 segundos
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+            } else {
+                statusIndicator.className = 'status-indicator offline';
+                statusText.textContent = 'Sin conexión a internet';
+                retryButton.textContent = '🔄 Verificar Conexión';
+                retryButton.onclick = checkConnection;
+            }
+        }
+
+        // Verificar conexión manualmente
+        async function checkConnection() {
+            const retryButton = document.getElementById('retryButton');
+            retryButton.disabled = true;
+            retryButton.textContent = '🔄 Verificando...';
+
+            try {
+                // Intentar hacer una petición a la API
+                const response = await fetch('/api/productos/?limit=1', {
+                    method: 'GET',
+                    cache: 'no-cache'
+                });
+
+                if (response.ok) {
+                    updateConnectionStatus();
+                } else {
+                    throw new Error('API not responding');
+                }
+            } catch (error) {
+                console.log('Still offline');
+                setTimeout(() => {
+                    retryButton.disabled = false;
+                    retryButton.textContent = '🔄 Verificar Conexión';
+                }, 2000);
+            }
+        }
+
+        // Obtener operaciones pendientes del Service Worker
+        async function checkPendingOperations() {
+            try {
+                // Comunicarse con el Service Worker para obtener operaciones pendientes
+                if ('serviceWorker' in navigator) {
+                    const registration = await navigator.serviceWorker.ready;
+
+                    // Escuchar mensajes del Service Worker
+                    navigator.serviceWorker.addEventListener('message', event => {
+                        if (event.data.type === 'PENDING_OPERATIONS_COUNT') {
+                            updatePendingOperationsDisplay(event.data.count);
+                        }
+                    });
+
+                    // Solicitar el conteo
+                    registration.active.postMessage({
+                        type: 'GET_PENDING_OPERATIONS_COUNT'
+                    });
+                }
+            } catch (error) {
+                console.log('Error checking pending operations:', error);
+            }
+        }
+
+        // Actualizar display de operaciones pendientes
+        function updatePendingOperationsDisplay(count) {
+            const pendingDiv = document.getElementById('pendingOperations');
+            const countSpan = document.getElementById('pendingCount');
+
+            if (count > 0) {
+                pendingDiv.style.display = 'block';
+                countSpan.textContent = count;
+            } else {
+                pendingDiv.style.display = 'none';
+            }
+        }
+
+        // Event listeners para cambios de conexión
+        window.addEventListener('online', () => {
+            console.log('Connection restored');
+            updateConnectionStatus();
+
+            // Notificar al Service Worker
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.ready.then(registration => {
+                    registration.active.postMessage({
+                        type: 'CONNECTIVITY_CHANGED',
+                        online: true
+                    });
+                });
+            }
+        });
+
+        window.addEventListener('offline', () => {
+            console.log('Connection lost');
+            updateConnectionStatus();
+        });
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', () => {
+            updateConnectionStatus();
+            checkPendingOperations();
+
+            // Verificar conexión cada 30 segundos
+            setInterval(checkConnection, 30000);
+        });
+
+        // Animación de fondo
+        document.addEventListener('mousemove', (e) => {
+            const container = document.querySelector('.offline-container');
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+
+            container.style.transform = `translate(${x * 10}px, ${y * 10}px)`;
+        });
+    </script>
+</body>
+</html>

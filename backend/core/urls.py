@@ -21,6 +21,7 @@ from django.urls import include, path
 from django.utils.html import escape
 from django.views.decorators.csrf import csrf_exempt
 
+from core.views import health_check, readiness_check
 
 @csrf_exempt
 def home(request):
@@ -384,7 +385,11 @@ def demo_dashboard(request):
 urlpatterns = [
     path("", home),
     path("demo/", demo_dashboard),
+    path("api/health/", health_check, name="health"),
+    path("api/ready/", readiness_check, name="readiness"),
     path('admin/', admin.site.urls),
+    path("api/usuarios/", include("usuarios.urls")),
+    path("api/configuracion/", include("configuracion.urls")),
     path("api/clientes/", include("clientes.urls")),
     path("api/proveedores/", include("proveedores.urls")),
     path("api/rrhh/", include("recursos_humanos.urls")),
@@ -392,4 +397,6 @@ urlpatterns = [
     path("api/ventas/", include("ventas.urls")),
     path("api/productos/", include("productos.urls")),
     path("api/finanzas/", include("finanzas_reportes.urls")),
+    path("api/inventario/", include("inventario.urls")),
+    path("api/contabilidad/", include("contabilidad.urls")),
 ]

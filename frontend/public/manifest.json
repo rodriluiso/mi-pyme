@@ -1,0 +1,105 @@
+{
+  "name": "Mi PyME - Sistema de Gestión",
+  "short_name": "Mi PyME",
+  "description": "Sistema completo de gestión para pequeñas y medianas empresas",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "es",
+  "categories": ["business", "productivity", "finance"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "375x667",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nueva Venta",
+      "short_name": "Venta",
+      "description": "Registrar una nueva venta",
+      "url": "/ventas?action=nueva",
+      "icons": [
+        {
+          "src": "/icon-venta.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Tablero",
+      "description": "Ver resumen del negocio",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/icon-dashboard.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Productos",
+      "short_name": "Inventario",
+      "description": "Gestionar productos e inventario",
+      "url": "/productos",
+      "icons": [
+        {
+          "src": "/icon-productos.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Reportes",
+      "short_name": "Reportes",
+      "description": "Ver reportes financieros",
+      "url": "/reportes",
+      "icons": [
+        {
+          "src": "/icon-reportes.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+mipyme",
+      "url": "/?handler=%s"
+    }
+  ]
+}

@@ -16,6 +16,8 @@ staticfiles/
 **/.env
 .env.local
 .env.*.local
+.env.production
+PRODUCTION_CREDENTIALS.md
 
 # Node/React (futuro)
 node_modules/
@@ -30,6 +32,21 @@ build/
 
 # Docker
 **/tmp/
+
 # Mi archivo personal
 mis_mascotas.py
 
+# Portable distribution files (too large for Git)
+MI-PYME-Portable/
+MI-PYME-Instalador.zip
+mi-pyme-distribucion/
+
+# Backups and temp files
+*.backup
+backup_*.json
+db.sqlite3.backup_*
+
+# OS files
+nul
+Thumbs.db
+.DS_Store

@@ -1,9 +1,18 @@
 ﻿from decimal import Decimal
+from datetime import datetime
 
 from rest_framework import serializers
 
-from productos.models import Producto
-from .models import CategoriaCompra, Compra, CompraLinea
+from .models import AjusteStockMateriaPrima, CategoriaCompra, Compra, CompraLinea, MateriaPrima, StockPorProveedor
+
+
+class MateriaPrimaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MateriaPrima
+        fields = (
+            "id", "nombre", "sku", "descripcion", "unidad_medida",
+            "stock", "stock_minimo", "precio_promedio", "activo"
+        )
 
 
 class CategoriaCompraSerializer(serializers.ModelSerializer):
@@ -13,21 +22,20 @@ class CategoriaCompraSerializer(serializers.ModelSerializer):
 
 
 class CompraLineaSerializer(serializers.ModelSerializer):
-    producto = serializers.PrimaryKeyRelatedField(
-        queryset=Producto.objects.all(), allow_null=True, required=False
+    materia_prima = serializers.PrimaryKeyRelatedField(
+        queryset=MateriaPrima.objects.all(), allow_null=True, required=False
     )
     subtotal = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-    producto_nombre = serializers.CharField(source="producto.nombre", read_only=True)
+    materia_prima_nombre = serializers.CharField(source="materia_prima.nombre", read_only=True)
 
     class Meta:
         model = CompraLinea
         fields = (
             "id",
-            "producto",
-            "producto_nombre",
+            "materia_prima",
+            "materia_prima_nombre",
             "descripcion",
             "cantidad",
-            "kilaje",
             "precio_unitario",
             "total_linea",
             "subtotal",
@@ -35,17 +43,16 @@ class CompraLineaSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         cantidad = attrs.get("cantidad")
-        kilaje = attrs.get("kilaje")
         precio = attrs.get("precio_unitario")
         total_linea = attrs.get("total_linea")
-        producto = attrs.get("producto")
+        materia_prima = attrs.get("materia_prima")
 
         def is_positive(value):
             return value is not None and value > 0
 
-        if not any(map(is_positive, (cantidad, kilaje, total_linea))):
+        if not any(map(is_positive, (cantidad, total_linea))):
             raise serializers.ValidationError(
-                "Debes especificar cantidad, kilaje o un total_linea para la compra."
+                "Debes especificar cantidad o un total_linea para la compra."
             )
 
         if total_linea is None:
@@ -55,13 +62,11 @@ class CompraLineaSerializer(serializers.ModelSerializer):
                 )
         if cantidad is not None and cantidad <= 0:
             raise serializers.ValidationError("La cantidad debe ser mayor a cero si se informa.")
-        if kilaje is not None and kilaje <= 0:
-            raise serializers.ValidationError("El kilaje debe ser mayor a cero si se informa.")
         if total_linea is not None and total_linea <= 0:
             raise serializers.ValidationError("El total_linea debe ser mayor a cero si se informa.")
-        if producto and not any(map(is_positive, (cantidad, kilaje))):
+        if materia_prima and not is_positive(cantidad):
             raise serializers.ValidationError(
-                "Para actualizar el stock del producto debes informar cantidad o kilaje."
+                "Para actualizar el stock de la materia prima debes informar cantidad."
             )
         return attrs
 
@@ -81,34 +86,47 @@ class CompraSerializer(serializers.ModelSerializer):
             "proveedor_nombre",
             "categoria",
             "categoria_nombre",
+            # Campos de IVA
+            "incluye_iva",
+            "subtotal",
+            "iva_monto",
             "total",
             "notas",
             "lineas",
         )
 
     def _build_lineas(self, compra: Compra, lineas_data):
-        total = Decimal("0")
-
         # revert stock from existing lines
-        for linea in compra.lineas.select_related("producto"):
-            if linea.producto and linea.unidades_para_stock > 0:
-                linea.producto.quitar_stock(linea.unidades_para_stock)
+        for linea in compra.lineas.select_related("materia_prima"):
+            if linea.materia_prima and linea.unidades_para_stock > 0:
+                linea.materia_prima.quitar_stock(linea.unidades_para_stock)
         compra.lineas.all().delete()
 
+        subtotal = Decimal("0")
         for linea_data in lineas_data:
             linea = CompraLinea.objects.create(compra=compra, **linea_data)
-            subtotal = linea.subtotal
-            total += subtotal
-            if linea.producto and linea.unidades_para_stock > 0:
-                linea.producto.agregar_stock(linea.unidades_para_stock)
+            subtotal += linea.subtotal
+            # El stock se actualiza automáticamente en el método save() del modelo
+
+        # Calcular IVA si está incluido
+        iva_monto = Decimal("0")
+        if compra.incluye_iva:
+            iva_monto = subtotal * Decimal("0.21")  # 21% de IVA
+
+        total = subtotal + iva_monto
+
+        compra.subtotal = subtotal
+        compra.iva_monto = iva_monto
         compra.total = total
-        compra.save(update_fields=["total"])
+        compra.save(update_fields=["subtotal", "iva_monto", "total"])
         return total
 
     def create(self, validated_data):
         lineas_data = validated_data.pop("lineas", [])
         compra = Compra.objects.create(**validated_data)
         total = self._build_lineas(compra, lineas_data)
+        if isinstance(compra.fecha, datetime):
+            compra.fecha = compra.fecha.date()
         self._sync_movimiento_financiero(compra, total)
         return compra
 
@@ -120,6 +138,8 @@ class CompraSerializer(serializers.ModelSerializer):
             total = self._build_lineas(instance, lineas_data)
         else:
             total = instance.recalcular_total()
+        if isinstance(instance.fecha, datetime):
+            instance.fecha = instance.fecha.date()
         self._sync_movimiento_financiero(instance, total)
         return instance
 
@@ -132,15 +152,97 @@ class CompraSerializer(serializers.ModelSerializer):
             defaults={
                 "fecha": compra.fecha,
                 "tipo": MovimientoFinanciero.Tipo.EGRESO,
+                "estado": MovimientoFinanciero.Estado.PENDIENTE,
                 "origen": MovimientoFinanciero.Origen.COMPRA,
                 "monto": total,
                 "descripcion": descripcion,
+                "proveedor": compra.proveedor,
             },
         )
         if not _created:
             movimiento.fecha = compra.fecha
             movimiento.monto = total
             movimiento.tipo = MovimientoFinanciero.Tipo.EGRESO
+            movimiento.estado = MovimientoFinanciero.Estado.PENDIENTE
             movimiento.origen = MovimientoFinanciero.Origen.COMPRA
             movimiento.descripcion = descripcion
-            movimiento.save(update_fields=["fecha", "monto", "tipo", "descripcion"])
+            movimiento.proveedor = compra.proveedor
+            movimiento.save(update_fields=["fecha", "monto", "tipo", "estado", "origen", "descripcion", "proveedor"])
+
+
+class AjusteStockMateriaPrimaSerializer(serializers.ModelSerializer):
+    materia_prima_nombre = serializers.CharField(source="materia_prima.nombre", read_only=True)
+    tipo_ajuste_display = serializers.CharField(source="get_tipo_ajuste_display", read_only=True)
+    proveedor_nombre = serializers.CharField(source="proveedor.nombre", read_only=True)
+
+    class Meta:
+        model = AjusteStockMateriaPrima
+        fields = (
+            "id", "fecha", "materia_prima", "materia_prima_nombre", "proveedor",
+            "proveedor_nombre", "tipo_ajuste", "tipo_ajuste_display", "cantidad",
+            "stock_anterior", "stock_nuevo", "motivo", "usuario"
+        )
+        read_only_fields = ("fecha", "stock_anterior", "stock_nuevo")
+
+
+class AjustarStockSerializer(serializers.Serializer):
+    """Serializer para ajustar stock de materia prima"""
+    tipo_ajuste = serializers.ChoiceField(
+        choices=AjusteStockMateriaPrima.TipoAjuste.choices,
+        default=AjusteStockMateriaPrima.TipoAjuste.CORRECCION
+    )
+    cantidad = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=3,
+        help_text="Cantidad a ajustar (positiva para agregar, negativa para quitar)"
+    )
+    motivo = serializers.CharField(
+        max_length=255,
+        help_text="Motivo del ajuste de stock"
+    )
+    usuario = serializers.CharField(
+        max_length=100,
+        required=False,
+        allow_blank=True,
+        help_text="Usuario que realiza el ajuste"
+    )
+    proveedor_id = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        help_text="ID del proveedor específico para ajustes de salida/consumo"
+    )
+
+    def validate_cantidad(self, value):
+        if value == 0:
+            raise serializers.ValidationError("La cantidad no puede ser cero")
+        return value
+
+    def validate_motivo(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("El motivo es requerido")
+        return value.strip()
+
+
+class StockPorProveedorSerializer(serializers.ModelSerializer):
+    """Serializer para mostrar stock desglosado por proveedor"""
+    materia_prima_nombre = serializers.CharField(source="materia_prima.nombre", read_only=True)
+    proveedor_nombre = serializers.CharField(source="proveedor.nombre", read_only=True)
+    unidad_medida = serializers.CharField(source="materia_prima.unidad_medida", read_only=True)
+
+    class Meta:
+        model = StockPorProveedor
+        fields = (
+            "id", "materia_prima", "materia_prima_nombre", "proveedor", "proveedor_nombre",
+            "cantidad_stock", "precio_promedio", "ultima_compra", "total_comprado",
+            "unidad_medida"
+        )
+
+
+class StockResumenPorProveedorSerializer(serializers.Serializer):
+    """Serializer para resumen de stock agrupado por materia prima y proveedor"""
+    materia_prima_id = serializers.IntegerField()
+    materia_prima_nombre = serializers.CharField()
+    sku = serializers.CharField(allow_blank=True)
+    unidad_medida = serializers.CharField()
+    stock_total = serializers.DecimalField(max_digits=12, decimal_places=3)
+    proveedores = StockPorProveedorSerializer(many=True, read_only=True)

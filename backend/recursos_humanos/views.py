@@ -1,25 +1,28 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, viewsets
+from rest_framework.permissions import IsAuthenticated
 
 from .models import Empleado, PagoEmpleado
 from .serializers import EmpleadoSerializer, PagoEmpleadoSerializer
 
 
 class EmpleadoViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
     queryset = Empleado.objects.all()
     serializer_class = EmpleadoSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["activo"]
-    search_fields = ["nombre", "identificacion", "puesto"]
-    ordering_fields = ["nombre", "identificacion"]
-    ordering = ["nombre"]
+    search_fields = ["nombre", "apellidos", "identificacion", "cuil", "puesto"]
+    ordering_fields = ["nombre", "apellidos", "identificacion", "fecha_ingreso"]
+    ordering = ["apellidos", "nombre"]
 
 
 class PagoEmpleadoViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
     queryset = PagoEmpleado.objects.select_related("empleado").all()
     serializer_class = PagoEmpleadoSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["empleado", "fecha"]
-    search_fields = ["empleado__nombre", "concepto"]
-    ordering_fields = ["fecha", "monto"]
+    filterset_fields = ["empleado", "fecha", "medio_pago", "generar_recibo"]
+    search_fields = ["empleado__nombre", "empleado__apellidos", "concepto"]
+    ordering_fields = ["fecha", "monto", "empleado__apellidos"]
     ordering = ["-fecha", "-id"]

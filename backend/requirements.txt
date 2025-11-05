@@ -4,5 +4,13 @@ djangorestframework-simplejwt
 drf-spectacular
 django-filter
 django-cors-headers
+django-axes
+django-encrypted-model-fields
+cryptography
 psycopg2-binary
+Pillow
+python-dotenv
 
+dj-database-url
+django-redis
+gunicorn
