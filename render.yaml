@@ -1,10 +1,9 @@
-services:
-  # PostgreSQL Database
-  - type: pserv
-    name: mipyme-db
+databases:
+  - name: mipyme-db
     plan: free
     region: oregon
 
+services:
   # Django Backend (Web Service)
   - type: web
     name: mipyme-backend
@@ -38,7 +37,6 @@ services:
     name: mipyme-frontend
     runtime: static
     plan: free
-    region: oregon
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
