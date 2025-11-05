@@ -13,17 +13,14 @@ services:
     runtime: python
     plan: free
     region: oregon
-    buildCommand: |
-      cd backend
-      pip install -r requirements.txt
-      python manage.py collectstatic --noinput
-      python manage.py migrate
-    startCommand: cd backend && gunicorn core.wsgi:application
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
+    startCommand: gunicorn core.wsgi:application
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: core.settings
       - key: DJANGO_DEBUG
-        value: False
+        value: false
       - key: DJANGO_ALLOWED_HOSTS
         value: .onrender.com
       - key: DATABASE_URL
@@ -35,24 +32,18 @@ services:
       - key: FERNET_KEY
         sync: false
       - key: DJANGO_CORS_ALLOWED_ORIGINS
-        value: https://mipyme-backend.onrender.com
+        value: https://mipyme-frontend.onrender.com
     healthCheckPath: /api/health/
 
-  # Nginx + Frontend (Static Site)
+  # React Frontend (Static Site)
   - type: web
     name: mipyme-frontend
     runtime: static
     plan: free
     region: oregon
-    buildCommand: |
-      cd frontend
-      npm install
-      npm run build
-    staticPublishPath: frontend/dist
-    routes:
-      - type: rewrite
-        source: /api/*
-        destination: https://mipyme-backend.onrender.com/api/*
-      - type: rewrite
-        source: /*
-        destination: /index.html
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://mipyme-backend.onrender.com/api
