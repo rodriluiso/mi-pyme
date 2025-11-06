@@ -19,7 +19,7 @@ services:
       - key: DJANGO_DEBUG
         value: false
       - key: DJANGO_ALLOWED_HOSTS
-        value: .onrender.com
+        value: mipyme-backend.onrender.com,.onrender.com
       - key: DATABASE_URL
         fromDatabase:
           name: mipyme-db
