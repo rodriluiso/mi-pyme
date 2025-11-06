@@ -32,12 +32,12 @@ if not DATABASES['default']:
     raise ValueError("DATABASE_URL environment variable is required in production")
 
 # CORS - Strict whitelist from environment
-cors_origins_env = os.getenv("CORS_ALLOWED_ORIGINS", "")
+cors_origins_env = os.getenv("DJANGO_CORS_ALLOWED_ORIGINS", "")
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
 
 if not CORS_ALLOWED_ORIGINS:
     raise ValueError(
-        "CORS_ALLOWED_ORIGINS environment variable is required in production. "
+        "DJANGO_CORS_ALLOWED_ORIGINS environment variable is required in production. "
         "Example: 'https://mipyme.example.com,https://www.mipyme.example.com'"
     )
 
