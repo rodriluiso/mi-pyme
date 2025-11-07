@@ -209,7 +209,20 @@ class AuthViewSet(viewsets.ViewSet):
         """Obtener token CSRF"""
         from django.middleware.csrf import get_token
         csrf_token = get_token(request)
-        return Response({'csrfToken': csrf_token})
+
+        response = Response({'csrfToken': csrf_token})
+
+        # Establecer explícitamente la cookie CSRF para cross-domain
+        response.set_cookie(
+            key='csrftoken',
+            value=csrf_token,
+            max_age=31449600,  # 1 año
+            secure=True,  # Solo HTTPS
+            httponly=False,  # Debe ser accesible por JavaScript
+            samesite='None'  # Requerido para cross-domain
+        )
+
+        return response
 
     @action(detail=False, methods=['post'])
     def login(self, request):
@@ -258,12 +271,24 @@ class AuthViewSet(viewsets.ViewSet):
             )
 
             # Asegurar que se envíe el token CSRF
-            get_token(request)
+            csrf_token = get_token(request)
 
-            return Response({
+            response = Response({
                 'mensaje': 'Login exitoso',
                 'usuario': PerfilUsuarioSerializer(user).data
             })
+
+            # Establecer explícitamente la cookie CSRF para cross-domain
+            response.set_cookie(
+                key='csrftoken',
+                value=csrf_token,
+                max_age=31449600,  # 1 año
+                secure=True,  # Solo HTTPS
+                httponly=False,  # Debe ser accesible por JavaScript
+                samesite='None'  # Requerido para cross-domain
+            )
+
+            return response
 
         # Registrar intento fallido
         LogAcceso.objects.create(
