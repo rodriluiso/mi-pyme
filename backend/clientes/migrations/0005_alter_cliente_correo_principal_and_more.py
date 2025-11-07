@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('clientes', '0004_add_missing_sucursal_fields'),
+        ('clientes', '0003_cliente_sucursal_architecture'),
     ]
 
     operations = [
