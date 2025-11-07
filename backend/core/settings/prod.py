@@ -54,6 +54,9 @@ SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "True").lower() == "true"
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_SAMESITE = 'None'  # Required for cross-domain cookies
+SESSION_COOKIE_DOMAIN = '.onrender.com'  # Share cookies across subdomains
+SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript access (XSS protection)
+CSRF_COOKIE_DOMAIN = '.onrender.com'  # Share CSRF cookies across subdomains
 SECURE_HSTS_SECONDS = 31536000  # 1 year
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
