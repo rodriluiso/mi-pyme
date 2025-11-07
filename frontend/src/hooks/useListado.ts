@@ -23,9 +23,13 @@ export const useListado = <T>(endpoint: string): EstadoListado<T> => {
         method: "GET",
         url: endpoint
       });
+      console.log(`[useListado] ${endpoint} respuesta:`, respuesta);
       // Asegurar que siempre sea un array, incluso si la respuesta es null/undefined
-      setDatos(Array.isArray(respuesta) ? respuesta : []);
+      const nuevoDatos = Array.isArray(respuesta) ? respuesta : [];
+      console.log(`[useListado] ${endpoint} estableciendo datos:`, nuevoDatos);
+      setDatos(nuevoDatos);
     } catch (err) {
+      console.error(`[useListado] ${endpoint} error:`, err);
       setError(err as ApiError);
       setDatos([]); // En caso de error, resetear a array vacío
     } finally {
