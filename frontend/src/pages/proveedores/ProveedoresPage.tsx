@@ -174,6 +174,8 @@ const ProveedoresPage = () => {
 
       setFormulario(estadoInicialFormulario);
       setModoEdicion(null);
+      // Pequeño delay para asegurar consistencia de BD en producción
+      await new Promise(resolve => setTimeout(resolve, 300));
       await recargar();
     } catch (err) {
       const apiError = err as ApiError;
@@ -233,6 +235,8 @@ const ProveedoresPage = () => {
         proveedor: prev.proveedor,
         medio: prev.medio || "EFECTIVO"
       }));
+      // Pequeño delay para asegurar consistencia de BD en producción
+      await new Promise(resolve => setTimeout(resolve, 300));
       await recargar();
     } catch (err) {
       const apiError = err as ApiError;
@@ -269,6 +273,8 @@ const ProveedoresPage = () => {
       if (modoEdicion?.id === proveedor.id) {
         cancelarEdicion();
       }
+      // Pequeño delay para asegurar consistencia de BD en producción
+      await new Promise(resolve => setTimeout(resolve, 300));
       await recargar();
     } catch (err) {
       const apiError = err as ApiError;

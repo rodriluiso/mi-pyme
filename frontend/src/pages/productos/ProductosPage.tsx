@@ -103,7 +103,7 @@ const ProductosPage = () => {
 
     setEnviandoProducto(true);
     try {
-      await request<Producto>({
+      const nuevoProducto = await request<Producto>({
         method: "POST",
         url: "/productos/",
         data: {
@@ -120,6 +120,8 @@ const ProductosPage = () => {
       });
       setMensajeProducto("Producto creado correctamente");
       setFormProducto(estadoInicialProducto);
+      // Pequeño delay para asegurar consistencia de BD en producción
+      await new Promise(resolve => setTimeout(resolve, 300));
       await recargar();
     } catch (err) {
       const apiError = err as ApiError;
@@ -166,6 +168,8 @@ const ProductosPage = () => {
       });
       setMensajeStock("Stock actualizado correctamente");
       setFormStock((prev) => ({ ...estadoInicialStock, producto: prev.producto }));
+      // Pequeño delay para asegurar consistencia de BD en producción
+      await new Promise(resolve => setTimeout(resolve, 300));
       await recargar();
     } catch (err) {
       const apiError = err as ApiError;

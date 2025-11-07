@@ -333,6 +333,8 @@ const VentasPage = () => {
       }
 
       setFormulario(estadoInicialFormulario);
+      // Pequeño delay para asegurar consistencia de BD en producción
+      await new Promise(resolve => setTimeout(resolve, 300));
       await recargar();
     } catch (err) {
       const apiError = err as ApiError;
