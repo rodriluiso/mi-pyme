@@ -19,13 +19,25 @@ export const useListado = <T>(endpoint: string): EstadoListado<T> => {
     setCargando(true);
     setError(null);
     try {
-      const respuesta = await request<T[]>({
+      const respuesta = await request<T[] | { results: T[] }>({
         method: "GET",
         url: endpoint
       });
       console.log(`[useListado] ${endpoint} respuesta:`, respuesta);
-      // Asegurar que siempre sea un array, incluso si la respuesta es null/undefined
-      const nuevoDatos = Array.isArray(respuesta) ? respuesta : [];
+
+      // Manejar respuestas paginadas (con results) y respuestas directas (array)
+      let nuevoDatos: T[];
+      if (Array.isArray(respuesta)) {
+        // Respuesta directa como array
+        nuevoDatos = respuesta;
+      } else if (respuesta && typeof respuesta === 'object' && 'results' in respuesta) {
+        // Respuesta paginada con formato { count, next, previous, results }
+        nuevoDatos = Array.isArray(respuesta.results) ? respuesta.results : [];
+      } else {
+        // Fallback a array vacío
+        nuevoDatos = [];
+      }
+
       console.log(`[useListado] ${endpoint} estableciendo datos:`, nuevoDatos);
       setDatos(nuevoDatos);
     } catch (err) {
