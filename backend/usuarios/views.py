@@ -6,6 +6,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from django.contrib.auth import login, logout
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime, timedelta
 
 from .models import Usuario, LogAcceso, ConfiguracionSistema
@@ -224,6 +226,7 @@ class AuthViewSet(viewsets.ViewSet):
 
         return response
 
+    @method_decorator(csrf_exempt)
     @action(detail=False, methods=['post'])
     def login(self, request):
         """Login de usuario con protección contra fuerza bruta"""
