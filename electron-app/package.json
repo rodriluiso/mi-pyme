@@ -1,0 +1,61 @@
+{
+  "name": "mipyme-desktop",
+  "version": "1.0.0",
+  "description": "MI-PYME - Sistema de Gestión Empresarial",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "copy-renderer": "node build-renderer.js",
+    "prebuild": "npm run copy-renderer",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "author": "MI-PYME",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^39.1.1",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.2.2"
+  },
+  "build": {
+    "appId": "com.mipyme.desktop",
+    "productName": "MI-PYME Desktop",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "MI-PYME Desktop"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Office"
+    }
+  }
+}

@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'django_filters',
     'corsheaders',
     'rest_framework',
+    'rest_framework.authtoken',  # Token authentication
 
     # Security
     'axes',
@@ -150,7 +151,8 @@ AXES_RESET_COOL_OFF_ON_FAILURE_DURING_LOCKOUT = True
 # REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'core.authentication.CsrfExemptSessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',  # Token auth for mobile/cross-domain
+        'core.authentication.CsrfExemptSessionAuthentication',  # Session auth for same-domain
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',

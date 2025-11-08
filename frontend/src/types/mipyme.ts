@@ -521,6 +521,7 @@ export interface LoginRequest {
 export interface LoginResponse {
   mensaje: string;
   usuario: Usuario;
+  token?: string;  // Token para autenticación mobile/cross-domain
 }
 
 export interface AuthContextType {

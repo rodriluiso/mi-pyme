@@ -36,6 +36,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const { data } = await apiClient.post<LoginResponse>('/usuarios/auth/login/', credentials);
       setUser(data.usuario);
+
+      // Guardar token en localStorage para autenticación cross-domain (mobile)
+      if (data.token) {
+        localStorage.setItem('auth_token', data.token);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -48,6 +53,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.error('Error durante logout:', error);
     } finally {
       setUser(null);
+      // Limpiar token de localStorage
+      localStorage.removeItem('auth_token');
     }
   };
 

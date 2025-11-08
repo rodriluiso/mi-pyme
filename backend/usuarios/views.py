@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.authtoken.models import Token
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from django.contrib.auth import login, logout
@@ -270,12 +271,16 @@ class AuthViewSet(viewsets.ViewSet):
                 exitoso=True
             )
 
+            # Crear o obtener token para autenticación móvil/cross-domain
+            token, created = Token.objects.get_or_create(user=user)
+
             # Asegurar que se envíe el token CSRF
             csrf_token = get_token(request)
 
             response = Response({
                 'mensaje': 'Login exitoso',
-                'usuario': PerfilUsuarioSerializer(user).data
+                'usuario': PerfilUsuarioSerializer(user).data,
+                'token': token.key  # Token para autenticación en mobile
             })
 
             # Establecer explícitamente la cookie CSRF para cross-domain
