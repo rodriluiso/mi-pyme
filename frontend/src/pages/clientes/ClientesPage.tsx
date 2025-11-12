@@ -458,6 +458,14 @@ const ClientesPage = () => {
                 </th>
                 <th className="px-4 py-3">
                   <button
+                    onClick={() => cambiarOrdenamiento('saldo')}
+                    className="flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+                  >
+                    Estado de cuenta {renderizarIconoOrdenamiento('saldo')}
+                  </button>
+                </th>
+                <th className="px-4 py-3">
+                  <button
                     onClick={() => cambiarOrdenamiento('correo')}
                     className="flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
                   >
@@ -496,14 +504,6 @@ const ClientesPage = () => {
                     Sucursales {renderizarIconoOrdenamiento('total_sucursales')}
                   </button>
                 </th>
-                <th className="px-4 py-3">
-                  <button
-                    onClick={() => cambiarOrdenamiento('saldo')}
-                    className="flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
-                  >
-                    Estado de cuenta {renderizarIconoOrdenamiento('saldo')}
-                  </button>
-                </th>
                 <th className="px-4 py-3 text-right">Acciones</th>
               </tr>
             </thead>
@@ -512,6 +512,7 @@ const ClientesPage = () => {
                 <tr key={cliente.id} className="hover:bg-slate-50 dark:hover:bg-slate-700">
                   <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{cliente.nombre}</td>
                   <td className="px-4 py-3">{cliente.identificacion}</td>
+                  <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200">{formatearSaldo(cliente)}</td>
                   <td className="px-4 py-3">{cliente.correo || "-"}</td>
                   <td className="px-4 py-3">{cliente.telefono || "-"}</td>
                   <td className="px-4 py-3">{cliente.direccion || "-"}</td>
@@ -521,7 +522,6 @@ const ClientesPage = () => {
                       🏢 {cliente.total_sucursales || 1}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200">{formatearSaldo(cliente)}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">
                       <Link
