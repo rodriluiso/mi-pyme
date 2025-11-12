@@ -162,6 +162,24 @@ const ClientesPage = () => {
       return;
     }
 
+    // Validar sucursales si tiene_multiples_sucursales está activado
+    if (formulario.tiene_multiples_sucursales && formulario.sucursales) {
+      const sucursalesValidas = formulario.sucursales.filter(s =>
+        obtenerValorSeguro(s.nombre_sucursal, 'sucursal.nombre_sucursal').trim()
+      );
+
+      if (sucursalesValidas.length === 0) {
+        setMensajeError("Debe ingresar al menos una sucursal con nombre");
+        return;
+      }
+
+      // Advertir si hay sucursales sin nombre que se van a ignorar
+      const sucursalesSinNombre = formulario.sucursales.length - sucursalesValidas.length;
+      if (sucursalesSinNombre > 0) {
+        console.warn(`⚠️ Se ignorarán ${sucursalesSinNombre} sucursal(es) sin nombre`);
+      }
+    }
+
     setEnviando(true);
     try {
       if (modoEdicion) {
@@ -206,6 +224,8 @@ const ClientesPage = () => {
           console.log('Creando sucursales, datos:', formulario.sucursales);
           console.log('Total sucursales a crear:', formulario.sucursales.length);
 
+          let sucursalesCreadas = 0;
+
           for (let i = 0; i < formulario.sucursales.length; i++) {
             const sucursal = formulario.sucursales[i];
             console.log(`Procesando sucursal ${i + 1}/${formulario.sucursales.length}:`, sucursal);
@@ -234,6 +254,7 @@ const ClientesPage = () => {
                   data: sucursalData
                 });
                 console.log(`Sucursal ${i + 1} creada exitosamente:`, sucursalCreada);
+                sucursalesCreadas++;
               } catch (error) {
                 console.error(`Error creando sucursal ${i + 1}:`, error);
                 throw error; // Re-lanzar el error para detener el proceso
@@ -242,7 +263,7 @@ const ClientesPage = () => {
               console.log(`Saltando sucursal ${i + 1} - nombre vacío`);
             }
           }
-          setMensajeExito(`Cliente creado correctamente con ${formulario.sucursales.length} sucursal${formulario.sucursales.length !== 1 ? 'es' : ''}`);
+          setMensajeExito(`Cliente creado correctamente con ${sucursalesCreadas} sucursal${sucursalesCreadas !== 1 ? 'es' : ''}`);
         } else {
           // Crear cliente normal (una sola ubicación)
           const payload = {
