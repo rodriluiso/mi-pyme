@@ -1,5 +1,5 @@
 import type { ChangeEvent, FormEvent } from "react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useApi } from "@/hooks/useApi";
 import { useListado } from "@/hooks/useListado";
 import type { ApiError } from "@/lib/api/types";
@@ -79,6 +79,7 @@ const VentasPage = () => {
   const [mensajeExito, setMensajeExito] = useState<string | null>(null);
   const [mensajeError, setMensajeError] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
+  const [preciosRecientes, setPreciosRecientes] = useState<number[]>([]);
 
   const clientesOrdenados = useMemo(() => {
     return [...clientes].sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -119,6 +120,23 @@ const VentasPage = () => {
 
     return opciones.sort((a, b) => a.nombre.localeCompare(b.nombre));
   }, [clientes]);
+
+  // Cargar precios recientes al montar el componente
+  useEffect(() => {
+    const cargarPreciosRecientes = async () => {
+      try {
+        const respuesta = await request<{ precios: number[] }>({
+          method: "GET",
+          url: "/ventas/precios-recientes/"
+        });
+        setPreciosRecientes(respuesta.precios);
+      } catch (error) {
+        console.error("Error cargando precios recientes:", error);
+      }
+    };
+
+    void cargarPreciosRecientes();
+  }, [request]);
 
   const calcularTotal = useMemo(() => {
     const subtotal = formulario.lineas.reduce((total, linea) => {
@@ -697,10 +715,21 @@ const VentasPage = () => {
                             step="0.01"
                             value={linea.precioUnitario}
                             onChange={(evento) => actualizarLineaVenta(linea.id, "precioUnitario", evento.target.value)}
+                            list={`precios-recientes-${linea.id}`}
                             className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none dark:bg-slate-700 dark:text-white"
                             disabled={enviando}
                             required
                           />
+                          <datalist id={`precios-recientes-${linea.id}`}>
+                            {preciosRecientes.map((precio, index) => (
+                              <option key={index} value={precio.toFixed(2)} />
+                            ))}
+                          </datalist>
+                          {preciosRecientes.length > 0 && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              Precios recientes disponibles en la lista
+                            </p>
+                          )}
                         </div>
                       </div>
 

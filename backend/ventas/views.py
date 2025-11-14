@@ -5,14 +5,14 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django.utils import timezone
-from django.db.models import Q, Sum, Count, F
+from django.db.models import Q, Sum, Count, F, Distinct
 from datetime import date, timedelta
 import base64
 import os
 from django.conf import settings
 
 from finanzas_reportes.serializers import PagoClienteSerializer
-from .models import Venta
+from .models import Venta, LineaVenta
 from .serializers import (
     RegistroPagoSerializer,
     VentaRapidaSerializer,
@@ -467,4 +467,30 @@ class VentaViewSet(viewsets.ModelViewSet):
             if linea.producto:
                 linea.producto.agregar_stock(linea.cantidad)
         super().perform_destroy(instance)
+
+    @action(detail=False, methods=["get"], url_path="precios-recientes")
+    def precios_recientes(self, request):
+        """Obtiene los últimos 8 precios por kg únicos utilizados en ventas"""
+        # Obtener precios únicos ordenados por fecha de venta más reciente
+        precios = (
+            LineaVenta.objects
+            .select_related('venta')
+            .filter(precio_unitario__gt=0)
+            .values('precio_unitario')
+            .annotate(
+                ultima_vez=F('venta__fecha')
+            )
+            .order_by('-ultima_vez')
+            .distinct()[:8]
+        )
+
+        # Extraer solo los valores de precio_unitario
+        precios_lista = [
+            float(precio['precio_unitario'])
+            for precio in precios
+        ]
+
+        return Response({
+            'precios': precios_lista
+        })
 
