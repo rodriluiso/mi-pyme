@@ -93,16 +93,18 @@ const DashboardPage = () => {
       setError(null);
       try {
         const [clientesResp, ventasResp, comprasResp, pagosResp, resumenResp] = await Promise.all([
-          request<Cliente[]>({ method: "GET", url: "/clientes/" }),
-          request<Venta[]>({ method: "GET", url: "/ventas/" }),
-          request<Compra[]>({ method: "GET", url: "/compras/" }),
-          request<PagoCliente[]>({ method: "GET", url: "/finanzas/pagos/" }),
+          request<{ results: Cliente[] } | Cliente[]>({ method: "GET", url: "/clientes/" }),
+          request<{ results: Venta[] } | Venta[]>({ method: "GET", url: "/ventas/" }),
+          request<{ results: Compra[] } | Compra[]>({ method: "GET", url: "/compras/" }),
+          request<{ results: PagoCliente[] } | PagoCliente[]>({ method: "GET", url: "/finanzas/pagos/" }),
           request<ResumenPendiente>({ method: "GET", url: "/finanzas/movimientos/resumen/pendiente/" })
         ]);
-        setClientes(Array.isArray(clientesResp) ? clientesResp : []);
-        setVentas(Array.isArray(ventasResp) ? ventasResp : []);
-        setCompras(Array.isArray(comprasResp) ? comprasResp : []);
-        setPagos(Array.isArray(pagosResp) ? pagosResp : []);
+
+        // Manejar respuestas paginadas vs arrays directos
+        setClientes(Array.isArray(clientesResp) ? clientesResp : (clientesResp as any)?.results || []);
+        setVentas(Array.isArray(ventasResp) ? ventasResp : (ventasResp as any)?.results || []);
+        setCompras(Array.isArray(comprasResp) ? comprasResp : (comprasResp as any)?.results || []);
+        setPagos(Array.isArray(pagosResp) ? pagosResp : (pagosResp as any)?.results || []);
         setResumenPendiente(resumenResp);
       } catch (err) {
         setError(err as ApiError);
