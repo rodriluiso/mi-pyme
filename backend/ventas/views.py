@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django.utils import timezone
-from django.db.models import Q, Sum, Count, F, Distinct
+from django.db.models import Q, Sum, Count, F
 from datetime import date, timedelta
 import base64
 import os
