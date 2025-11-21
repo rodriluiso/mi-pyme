@@ -10,7 +10,7 @@ from proveedores.models import Proveedor
 class MateriaPrima(models.Model):
     """Materias primas que se compran a proveedores para la producción"""
     nombre = models.CharField(max_length=120)
-    sku = models.CharField(max_length=50, unique=True, blank=True)
+    sku = models.CharField(max_length=50, unique=True, blank=True, null=True)
     descripcion = models.TextField(blank=True)
     unidad_medida = models.CharField(
         max_length=20,
@@ -57,6 +57,12 @@ class MateriaPrima(models.Model):
         if self.sku:
             display = f"{self.nombre} ({self.sku})"
         return display
+
+    def save(self, *args, **kwargs):
+        """Convertir SKU vacío en NULL para evitar conflictos de unicidad"""
+        if self.sku == '':
+            self.sku = None
+        super().save(*args, **kwargs)
 
     def _normalizar_cantidad(self, cantidad) -> Decimal:
         if cantidad is None:
