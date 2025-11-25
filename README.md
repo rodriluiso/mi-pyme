@@ -1,180 +1,322 @@
-# MI-PYME - Sistema de Gestión para PyMEs
+# MI-PYME
 
-Sistema integral de gestión empresarial para pequeñas y medianas empresas, desarrollado con Django (backend) y React (frontend).
+Sistema de gestión empresarial para PyMEs que cubre operaciones de compra, venta, inventario, finanzas y recursos humanos. Pensado para negocios que requieren control detallado de stock, gestión de clientes/proveedores con múltiples sucursales, y seguimiento de cobranzas.
 
-## ✨ Características
+## Arquitectura
 
-- 💼 **Gestión de Clientes y Proveedores**
-- 📦 **Control de Inventario y Productos**
-- 🛒 **Compras y Ventas**
-- 💰 **Finanzas y Reportes**
-- 👥 **Recursos Humanos**
-- 📊 **Contabilidad**
-- 🔒 **Seguridad y Control de Acceso**
+La aplicación se divide en tres componentes principales:
 
-## 🚀 Despliegue Rápido
+- **Backend Django**: API REST que gestiona la lógica de negocio y acceso a datos
+- **Frontend React**: Interfaz web desarrollada con Vite, TypeScript y TailwindCSS
+- **Desktop Tauri** (opcional): Aplicación nativa para Windows que consume la misma API
 
-### Opción A: Servidor (Cloud/VPS)
+El backend puede ejecutarse con PostgreSQL en producción o SQLite en desarrollo. La aplicación web se comunica con el backend mediante autenticación por tokens (cross-domain) o sesiones (same-domain).
 
-```bash
-# 1. Configurar variables de entorno
-cp .env.production.example .env.production
-nano .env.production
+## Requerimientos del sistema
 
-# 2. Build frontend
-cd frontend && npm install && npm run build && cd ..
+### Para desarrollo local
 
-# 3. Deploy
-docker-compose -f docker-compose.prod.yml up -d
+- Python 3.11+
+- Node.js 18+ y npm
+- Git
 
-# 4. Crear superusuario
-docker-compose -f docker-compose.prod.yml exec backend \
-    python manage.py createsuperuser
-```
+### Para aplicación desktop (Tauri)
 
-Ver [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) para instrucciones detalladas.
+- Rust 1.77.2+
+- Requisitos adicionales de Tauri según plataforma: [https://tauri.app/v1/guides/getting-started/prerequisites](https://tauri.app/v1/guides/getting-started/prerequisites)
 
-### Opción B: Desktop (Windows - Coming Soon)
+### Para despliegue en producción
 
-La versión de escritorio con Electron estará disponible en la Fase 2.
+- PostgreSQL 14+
+- Redis (opcional, para cache)
+- Servidor con HTTPS configurado (ej: Nginx, Render, Railway)
 
-## 📖 Documentación
+## Instalación
 
-- [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) - Guía completa de despliegue
-- [RUNBOOK.md](RUNBOOK.md) - Operaciones y troubleshooting
-- [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md) - Estado actual del proyecto
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Arquitectura del sistema
-
-## 🛠️ Desarrollo Local
+### Backend
 
 ```bash
-# Backend
 cd backend
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver
+```
 
-# Frontend (terminal separada)
+Crear archivo `.env` en `backend/`:
+
+```env
+DJANGO_SECRET_KEY=tu-secret-key-aqui
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+DATABASE_URL=sqlite:///db.sqlite3
+```
+
+Ejecutar migraciones y crear superusuario:
+
+```bash
+python manage.py migrate
+python manage.py createsuperuser
+```
+
+### Frontend
+
+```bash
 cd frontend
 npm install
+```
+
+Crear archivo `.env.local` en `frontend/`:
+
+```env
+VITE_API_BASE_URL=http://localhost:8000/api
+```
+
+## Uso
+
+### Modo desarrollo
+
+Ejecutar backend y frontend en terminales separadas:
+
+```bash
+# Terminal 1: Backend
+cd backend
+source venv/bin/activate  # Windows: venv\Scripts\activate
+python manage.py runserver
+
+# Terminal 2: Frontend
+cd frontend
 npm run dev
 ```
 
-## 🔧 Stack Tecnológico
+La aplicación web estará disponible en `http://localhost:5173` y el admin de Django en `http://localhost:8000/admin`.
 
-### Backend
-- Django 5.0
-- Django REST Framework
-- PostgreSQL / SQLite
-- Gunicorn
-- Redis (cache)
+### Aplicación desktop con Tauri
 
-### Frontend
-- React 18
-- Vite
-- TypeScript
-- TailwindCSS
+Instalar Rust siguiendo la guía oficial: [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install)
 
-### Infraestructura
-- Docker & Docker Compose
-- Nginx
-- Let's Encrypt (SSL)
+Ejecutar en modo desarrollo:
 
-## 📦 Estructura del Proyecto
+```bash
+cd frontend
+npm run tauri:dev
+```
+
+La primera compilación toma 5-10 minutos. Compilaciones posteriores son más rápidas.
+
+## Estructura del proyecto
 
 ```
 mi-pyme-dev/
-├── backend/              # Django backend
-│   ├── core/            # Configuración principal
-│   │   └── settings/    # Settings por entorno
-│   ├── clientes/        # App de clientes
-│   ├── productos/       # App de productos
-│   ├── ventas/          # App de ventas
-│   ├── compras/         # App de compras
-│   ├── finanzas_reportes/ # App de finanzas
-│   └── ...
-├── frontend/            # React frontend
+├── backend/
+│   ├── core/                    # Configuración Django
+│   │   ├── settings/
+│   │   │   ├── base.py         # Settings compartidos
+│   │   │   ├── dev.py          # Development
+│   │   │   ├── prod.py         # Production
+│   │   │   └── desktop.py      # Desktop app
+│   │   ├── urls.py
+│   │   └── authentication.py   # Auth personalizada
+│   ├── clientes/               # Gestión de clientes y sucursales
+│   ├── proveedores/            # Gestión de proveedores
+│   ├── productos/              # Productos terminados
+│   ├── compras/                # Compras y materias primas
+│   ├── ventas/                 # Ventas y remitos
+│   ├── finanzas_reportes/      # Finanzas, pagos, movimientos
+│   ├── recursos_humanos/       # RR.HH. y empleados
+│   ├── contabilidad/           # Contabilidad básica
+│   ├── inventario/             # Control de stock
+│   ├── configuracion/          # Config de empresa y sistema
+│   └── usuarios/               # Usuarios y permisos
+├── frontend/
 │   ├── src/
-│   └── dist/           # Build producción
-├── infra/              # Configuración infraestructura
-│   └── nginx/          # Nginx configs
-├── scripts/            # Scripts de utilidad
-│   ├── deploy.sh       # Deploy automatizado
-│   └── backup_db.sh    # Backup de BD
-├── docker-compose.prod.yml
-└── README.md
+│   │   ├── components/         # Componentes React
+│   │   ├── pages/              # Páginas por módulo
+│   │   ├── hooks/              # Custom hooks
+│   │   ├── lib/                # Utilidades y cliente API
+│   │   ├── contexts/           # React contexts
+│   │   └── types/              # TypeScript types
+│   ├── src-tauri/              # Configuración Tauri
+│   │   ├── src/
+│   │   ├── Cargo.toml
+│   │   └── tauri.conf.json
+│   └── dist/                   # Build de producción
+├── scripts/
+│   ├── deploy.sh               # Deploy automatizado
+│   └── backup_db.sh            # Backup de base de datos
+└── infra/
+    └── nginx/                  # Configuraciones Nginx
 ```
 
-## 🔐 Seguridad
+## Variables de entorno
 
-- ✅ Django Axes (rate limiting)
-- ✅ CORS configurado
-- ✅ HTTPS enforced en producción
-- ✅ Secret key management
-- ✅ Password hashing (bcrypt)
-- ✅ SQL injection protection (ORM)
-- ✅ XSS protection (React + Django)
+### Backend
 
-## 📊 Health Checks
+Variables requeridas en producción (`.env.production`):
+
+```env
+# Django
+DJANGO_SECRET_KEY=            # Generar con: python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
+DJANGO_DEBUG=False
+DJANGO_ALLOWED_HOSTS=         # ej: mipyme.com,www.mipyme.com
+DJANGO_CORS_ALLOWED_ORIGINS=  # ej: https://frontend.mipyme.com
+
+# Database
+DATABASE_URL=                 # ej: postgres://user:pass@host:5432/dbname
+
+# Redis (opcional)
+REDIS_URL=                    # ej: redis://localhost:6379/1
+
+# Email (opcional)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=
+EMAIL_HOST_PASSWORD=
+
+# Encryption
+FERNET_KEY=                   # Generar con: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'
+```
+
+### Frontend
+
+Variables para build de producción (`.env.production`):
+
+```env
+VITE_API_BASE_URL=https://api.mipyme.com/api
+```
+
+## Scripts disponibles
+
+### Backend
 
 ```bash
-# Backend health
-curl http://localhost/api/health/
+# Ejecutar servidor de desarrollo
+python manage.py runserver
 
-# Readiness check
-curl http://localhost/api/ready/
+# Crear migraciones
+python manage.py makemigrations
+
+# Aplicar migraciones
+python manage.py migrate
+
+# Crear superusuario
+python manage.py createsuperuser
+
+# Recolectar archivos estáticos
+python manage.py collectstatic
+
+# Shell interactivo
+python manage.py shell
+
+# Tests
+python manage.py test
 ```
 
-## 🔄 Actualizaciones
+### Frontend
 
 ```bash
-# Pull últimos cambios
-git pull origin main
+# Desarrollo
+npm run dev
 
-# Deploy
-./scripts/deploy.sh
+# Build para producción
+npm run build
+
+# Preview del build
+npm run preview
+
+# Linting
+npm run lint
+
+# Formateo de código
+npm run format
+
+# Tests
+npm run test
+npm run test:coverage
+
+# Tauri (desktop)
+npm run tauri:dev     # Desarrollo
+npm run tauri:build   # Build instalador
 ```
 
-## 💾 Backups
+## Construcción del build
+
+### Web (producción)
 
 ```bash
-# Manual
-./scripts/backup_db.sh
+# 1. Build frontend
+cd frontend
+npm install
+npm run build
 
-# Automático (cron)
-0 2 * * * /path/to/scripts/backup_db.sh
+# 2. Build backend
+cd ../backend
+pip install -r requirements.txt
+python manage.py collectstatic --noinput
+python manage.py migrate
 ```
 
-## 🐛 Troubleshooting
+El directorio `frontend/dist/` contiene los archivos estáticos del frontend listos para servir con Nginx o cualquier servidor HTTP.
 
-Ver [RUNBOOK.md](RUNBOOK.md) para troubleshooting detallado.
-
-### Comandos Útiles
+### Desktop (Windows)
 
 ```bash
-# Ver logs
-docker-compose -f docker-compose.prod.yml logs -f backend
-
-# Reiniciar servicio
-docker-compose -f docker-compose.prod.yml restart backend
-
-# Acceder al shell de Django
-docker-compose -f docker-compose.prod.yml exec backend python manage.py shell
-
-# Ver estado de servicios
-docker-compose -f docker-compose.prod.yml ps
+cd frontend
+npm run tauri:build
 ```
 
-## 📝 Licencia
+El instalador se genera en `frontend/src-tauri/target/release/bundle/`. La primera compilación puede tardar 10-15 minutos.
 
-[Tu licencia aquí]
+Tamaño aproximado del instalador: 15-20 MB.
 
-## 🤝 Contribuir
+## Troubleshooting
 
-[Instrucciones de contribución]
+### Error 500 al crear materia prima sin SKU
 
-## 📞 Soporte
+Solucionado en versión actual. El campo SKU ahora acepta valores nulos.
 
-Para problemas o preguntas, ver [RUNBOOK.md](RUNBOOK.md) o contactar a [tu-email@example.com]
+### Dashboard muestra indicadores en cero
+
+Verificar que el backend esté sirviendo respuestas paginadas correctamente. El frontend maneja automáticamente respuestas con formato `{results: [...]}` y arrays directos.
+
+### Error 403 al acceder desde mobile
+
+La aplicación usa autenticación por tokens para requests cross-domain. Asegurar que:
+- `DJANGO_CORS_ALLOWED_ORIGINS` incluya el dominio del frontend
+- El frontend guarde el token recibido en el login (`localStorage.setItem('auth_token', token)`)
+- Las peticiones incluyan el header `Authorization: Token <token>`
+
+### Tauri no compila en Windows
+
+Verificar que Rust esté instalado y en PATH. Cerrar y reabrir la terminal después de instalar Rust.
+
+```bash
+rustc --version
+cargo --version
+```
+
+Si los comandos no se reconocen, ejecutar `INSTALAR_RUST.bat` desde el directorio raíz.
+
+### Migraciones pendientes
+
+```bash
+python manage.py showmigrations
+python manage.py migrate
+```
+
+### Puerto ya en uso
+
+Cambiar el puerto del backend:
+
+```bash
+python manage.py runserver 8001
+```
+
+Actualizar `VITE_API_BASE_URL` en el frontend si es necesario.
+
+## Licencia
+
+Uso privado.
+
+## Contacto
+
+Para soporte técnico o consultas sobre el sistema, consultar la documentación interna o contactar al equipo de desarrollo.
