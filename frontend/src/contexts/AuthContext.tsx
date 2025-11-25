@@ -34,6 +34,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = async (credentials: LoginRequest): Promise<void> => {
     setIsLoading(true);
     try {
+      // Limpiar cualquier token anterior antes de hacer login
+      localStorage.removeItem('auth_token');
+
       const { data } = await apiClient.post<LoginResponse>('/usuarios/auth/login/', credentials);
       setUser(data.usuario);
 

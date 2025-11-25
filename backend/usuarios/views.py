@@ -274,8 +274,9 @@ class AuthViewSet(viewsets.ViewSet):
                 exitoso=True
             )
 
-            # Crear o obtener token para autenticación móvil/cross-domain
-            token, created = Token.objects.get_or_create(user=user)
+            # Regenerar token en cada login para asegurar permisos actualizados
+            Token.objects.filter(user=user).delete()
+            token = Token.objects.create(user=user)
 
             # Asegurar que se envíe el token CSRF
             csrf_token = get_token(request)
