@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 from usuarios.models import Usuario
+from rest_framework.authtoken.models import Token
 
 
 class Command(BaseCommand):
@@ -16,9 +17,23 @@ class Command(BaseCommand):
             usuario.nivel_acceso = 'ADMIN_TOTAL'
             usuario.save()
 
+            # Regenerar token para que refleje los nuevos permisos
+            Token.objects.filter(user=usuario).delete()
+            new_token = Token.objects.create(user=usuario)
+
             self.stdout.write(
                 self.style.SUCCESS(
                     f'Usuario "{username}" promocionado a ADMIN_TOTAL correctamente'
+                )
+            )
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f'Nuevo token generado: {new_token.key}'
+                )
+            )
+            self.stdout.write(
+                self.style.WARNING(
+                    'El usuario debe cerrar sesión y volver a iniciar sesión'
                 )
             )
         except Usuario.DoesNotExist:
