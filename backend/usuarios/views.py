@@ -22,12 +22,20 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     """ViewSet para gestionar usuarios"""
 
     queryset = Usuario.objects.all()
-    permission_classes = [IsAuthenticated, CanManageUsers]
+    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['nivel_acceso', 'activo', 'is_active']
     search_fields = ['username', 'first_name', 'last_name', 'email', 'cargo']
     ordering_fields = ['fecha_creacion', 'last_login', 'nivel_acceso']
     ordering = ['-fecha_creacion']
+
+    def get_permissions(self):
+        """Permisos personalizados según la acción"""
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            # Solo Admin Total puede crear/editar/eliminar usuarios
+            return [IsAuthenticated(), CanManageUsers()]
+        # Cualquier usuario autenticado puede ver la lista
+        return [IsAuthenticated()]
 
     def get_serializer_class(self):
         """Retorna el serializer apropiado según la acción"""
@@ -38,11 +46,6 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Filtrar usuarios según permisos del usuario actual"""
         queryset = super().get_queryset()
-
-        # Solo Admin Total puede ver todos los usuarios
-        if not self.request.user.puede_gestionar_usuarios():
-            return queryset.none()
-
         return queryset.order_by('-fecha_creacion')
 
     def perform_create(self, serializer):
