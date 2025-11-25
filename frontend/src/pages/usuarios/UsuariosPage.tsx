@@ -121,7 +121,7 @@ const UsuariosPage = () => {
     try {
       const respuesta = await request<{ results: Usuario[] } | Usuario[]>({
         method: 'GET',
-        url: '/usuarios/'
+        url: '/usuarios/usuarios/'
       });
 
       // Manejar respuestas paginadas vs arrays directos
@@ -137,7 +137,7 @@ const UsuariosPage = () => {
     try {
       const respuesta = await request<EstadisticasUsuarios>({
         method: 'GET',
-        url: '/usuarios/estadisticas/'
+        url: '/usuarios/usuarios/estadisticas/'
       });
       setEstadisticas(respuesta);
     } catch (error) {
@@ -145,7 +145,7 @@ const UsuariosPage = () => {
       // Si no hay endpoint de estadísticas, calcular localmente
       const usuariosResp = await request<{ results: Usuario[] } | Usuario[]>({
         method: 'GET',
-        url: '/usuarios/'
+        url: '/usuarios/usuarios/'
       });
       const usuariosData = Array.isArray(usuariosResp) ? usuariosResp : (usuariosResp as any)?.results || [];
 
@@ -195,7 +195,7 @@ const UsuariosPage = () => {
         // Actualizar usuario existente
         await request({
           method: 'PUT',
-          url: `/usuarios/${usuarioEditando.id}/`,
+          url: `/usuarios/usuarios/${usuarioEditando.id}/`,
           data: {
             username: formulario.username,
             email: formulario.email,
@@ -212,7 +212,7 @@ const UsuariosPage = () => {
         // Crear nuevo usuario
         await request({
           method: 'POST',
-          url: '/usuarios/',
+          url: '/usuarios/usuarios/',
           data: formulario
         });
         setMensajeExito('Usuario creado correctamente');
@@ -253,7 +253,7 @@ const UsuariosPage = () => {
     try {
       await request({
         method: 'DELETE',
-        url: `/usuarios/${usuario.id}/`
+        url: `/usuarios/usuarios/${usuario.id}/`
       });
       setMensajeExito('Usuario desactivado correctamente');
       await cargarDatos();
