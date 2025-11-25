@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useApi } from '@/hooks/useApi';
 
 // Iconos SVG simples para reemplazar Heroicons
 const UserPlusIcon = ({ className }: { className?: string }) => (
@@ -71,6 +72,7 @@ interface EstadisticasUsuarios {
 }
 
 const UsuariosPage = () => {
+  const { request } = useApi();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [estadisticas, setEstadisticas] = useState<EstadisticasUsuarios | null>(null);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -94,6 +96,8 @@ const UsuariosPage = () => {
   });
   const [cargando, setCargando] = useState(true);
   const [enviando, setEnviando] = useState(false);
+  const [mensajeError, setMensajeError] = useState('');
+  const [mensajeExito, setMensajeExito] = useState('');
 
   useEffect(() => {
     cargarDatos();
@@ -115,93 +119,104 @@ const UsuariosPage = () => {
 
   const cargarUsuarios = async () => {
     try {
-      // Simulando datos para mostrar la interfaz
-      const usuariosDemo: Usuario[] = [
-        {
-          id: 1,
-          username: 'admin',
-          email: 'admin@mipyme.com',
-          first_name: 'Administrador',
-          last_name: 'Principal',
-          nivel_acceso: 'ADMIN_TOTAL',
-          nivel_acceso_display: 'Administrador Total',
-          cargo: 'Gerente General',
-          telefono: '+54 9 11 1234-5678',
-          activo: true,
-          ultima_actividad: '2024-10-01T10:30:00Z',
-          fecha_creacion: '2024-01-01T08:00:00Z'
-        },
-        {
-          id: 2,
-          username: 'maria.gonzalez',
-          email: 'maria@mipyme.com',
-          first_name: 'María',
-          last_name: 'González',
-          nivel_acceso: 'ADMIN_NIVEL_2',
-          nivel_acceso_display: 'Administrador Nivel 2',
-          cargo: 'Encargada de Ventas',
-          telefono: '+54 9 11 2345-6789',
-          activo: true,
-          ultima_actividad: '2024-10-01T09:15:00Z',
-          fecha_creacion: '2024-02-15T10:00:00Z'
-        },
-        {
-          id: 3,
-          username: 'carlos.lopez',
-          email: 'carlos@mipyme.com',
-          first_name: 'Carlos',
-          last_name: 'López',
-          nivel_acceso: 'ADMIN_NIVEL_1',
-          nivel_acceso_display: 'Administrador Nivel 1',
-          cargo: 'Vendedor',
-          telefono: '+54 9 11 3456-7890',
-          activo: true,
-          ultima_actividad: '2024-09-30T16:45:00Z',
-          fecha_creacion: '2024-03-10T14:30:00Z'
-        }
-      ];
-      setUsuarios(usuariosDemo);
+      const respuesta = await request<{ results: Usuario[] } | Usuario[]>({
+        method: 'GET',
+        url: '/usuarios/'
+      });
+
+      // Manejar respuestas paginadas vs arrays directos
+      const usuariosData = Array.isArray(respuesta) ? respuesta : (respuesta as any)?.results || [];
+      setUsuarios(usuariosData);
     } catch (error) {
       console.error('Error cargando usuarios:', error);
+      setMensajeError('Error al cargar usuarios');
     }
   };
 
   const cargarEstadisticas = async () => {
     try {
-      // Simulando estadísticas
-      const estadisticasDemo: EstadisticasUsuarios = {
-        total_usuarios: 3,
+      const respuesta = await request<EstadisticasUsuarios>({
+        method: 'GET',
+        url: '/usuarios/estadisticas/'
+      });
+      setEstadisticas(respuesta);
+    } catch (error) {
+      console.error('Error cargando estadísticas:', error);
+      // Si no hay endpoint de estadísticas, calcular localmente
+      const usuariosResp = await request<{ results: Usuario[] } | Usuario[]>({
+        method: 'GET',
+        url: '/usuarios/'
+      });
+      const usuariosData = Array.isArray(usuariosResp) ? usuariosResp : (usuariosResp as any)?.results || [];
+
+      const estadisticasLocal: EstadisticasUsuarios = {
+        total_usuarios: usuariosData.length,
         usuarios_por_nivel: {
           'ADMIN_TOTAL': {
             nombre: 'Administrador Total',
-            cantidad: 1
+            cantidad: usuariosData.filter(u => u.nivel_acceso === 'ADMIN_TOTAL').length
           },
           'ADMIN_NIVEL_2': {
             nombre: 'Administrador Nivel 2',
-            cantidad: 1
+            cantidad: usuariosData.filter(u => u.nivel_acceso === 'ADMIN_NIVEL_2').length
           },
           'ADMIN_NIVEL_1': {
             nombre: 'Administrador Nivel 1',
-            cantidad: 1
+            cantidad: usuariosData.filter(u => u.nivel_acceso === 'ADMIN_NIVEL_1').length
           }
         }
       };
-      setEstadisticas(estadisticasDemo);
-    } catch (error) {
-      console.error('Error cargando estadísticas:', error);
+      setEstadisticas(estadisticasLocal);
     }
   };
 
   const manejarEnvioFormulario = async (e: React.FormEvent) => {
     e.preventDefault();
     setEnviando(true);
+    setMensajeError('');
+    setMensajeExito('');
 
     try {
-      // Aquí iría la lógica para enviar al backend
-      console.log('Enviando usuario:', formulario);
+      // Validar contraseñas si es nuevo usuario
+      if (!usuarioEditando) {
+        if (formulario.password !== formulario.password_confirm) {
+          setMensajeError('Las contraseñas no coinciden');
+          setEnviando(false);
+          return;
+        }
+        if (formulario.password.length < 6) {
+          setMensajeError('La contraseña debe tener al menos 6 caracteres');
+          setEnviando(false);
+          return;
+        }
+      }
 
-      // Simular creación exitosa
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (usuarioEditando) {
+        // Actualizar usuario existente
+        await request({
+          method: 'PUT',
+          url: `/usuarios/${usuarioEditando.id}/`,
+          data: {
+            username: formulario.username,
+            email: formulario.email,
+            first_name: formulario.first_name,
+            last_name: formulario.last_name,
+            nivel_acceso: formulario.nivel_acceso,
+            cargo: formulario.cargo,
+            telefono: formulario.telefono,
+            activo: formulario.activo
+          }
+        });
+        setMensajeExito('Usuario actualizado correctamente');
+      } else {
+        // Crear nuevo usuario
+        await request({
+          method: 'POST',
+          url: '/usuarios/',
+          data: formulario
+        });
+        setMensajeExito('Usuario creado correctamente');
+      }
 
       setMostrarFormulario(false);
       setUsuarioEditando(null);
@@ -219,10 +234,33 @@ const UsuariosPage = () => {
       });
 
       await cargarDatos();
-    } catch (error) {
+
+      // Limpiar mensaje de éxito después de 3 segundos
+      setTimeout(() => setMensajeExito(''), 3000);
+    } catch (error: any) {
       console.error('Error enviando formulario:', error);
+      setMensajeError(error?.response?.data?.message || 'Error al guardar usuario');
     } finally {
       setEnviando(false);
+    }
+  };
+
+  const eliminarUsuario = async (usuario: Usuario) => {
+    if (!confirm(`¿Está seguro de desactivar el usuario ${usuario.username}?`)) {
+      return;
+    }
+
+    try {
+      await request({
+        method: 'DELETE',
+        url: `/usuarios/${usuario.id}/`
+      });
+      setMensajeExito('Usuario desactivado correctamente');
+      await cargarDatos();
+      setTimeout(() => setMensajeExito(''), 3000);
+    } catch (error) {
+      console.error('Error eliminando usuario:', error);
+      setMensajeError('Error al desactivar usuario');
     }
   };
 
@@ -282,6 +320,20 @@ const UsuariosPage = () => {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Mensajes de alerta */}
+        {mensajeError && (
+          <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 rounded-lg flex items-center justify-between">
+            <span>{mensajeError}</span>
+            <button onClick={() => setMensajeError('')} className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-200">✕</button>
+          </div>
+        )}
+        {mensajeExito && (
+          <div className="mb-4 p-4 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 rounded-lg flex items-center justify-between">
+            <span>{mensajeExito}</span>
+            <button onClick={() => setMensajeExito('')} className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-200">✕</button>
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between">
@@ -452,13 +504,25 @@ const UsuariosPage = () => {
                         <button
                           onClick={() => abrirEdicion(usuario)}
                           className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
+                          title="Editar usuario"
                         >
                           <PencilIcon className="h-4 w-4" />
                         </button>
-                        <button className="text-amber-600 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300">
+                        <button
+                          onClick={() => {
+                            setMensajeError('Funcionalidad de cambio de contraseña pendiente de implementación');
+                            setTimeout(() => setMensajeError(''), 3000);
+                          }}
+                          className="text-amber-600 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300"
+                          title="Cambiar contraseña"
+                        >
                           <KeyIcon className="h-4 w-4" />
                         </button>
-                        <button className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300">
+                        <button
+                          onClick={() => eliminarUsuario(usuario)}
+                          className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+                          title="Desactivar usuario"
+                        >
                           <TrashIcon className="h-4 w-4" />
                         </button>
                       </div>
@@ -491,6 +555,12 @@ const UsuariosPage = () => {
                 </div>
 
                 <form onSubmit={manejarEnvioFormulario} className="space-y-4">
+                  {mensajeError && (
+                    <div className="p-3 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 rounded-lg text-sm">
+                      {mensajeError}
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">

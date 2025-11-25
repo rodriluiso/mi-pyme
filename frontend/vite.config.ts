@@ -13,7 +13,7 @@ export default defineConfig({
   // (por ejemplo dentro de Electron o al abrir el index.html directamente)
   base: './',
   server: {
-    port: 5174,
+    port: 5173,
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
