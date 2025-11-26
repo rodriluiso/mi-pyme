@@ -12,6 +12,7 @@ import os
 from django.conf import settings
 
 from finanzas_reportes.serializers import PagoClienteSerializer
+from usuarios.mixins import ModulePermissionMixin
 from .models import Venta, LineaVenta
 from .serializers import (
     RegistroPagoSerializer,
@@ -20,7 +21,8 @@ from .serializers import (
 )
 
 
-class VentaViewSet(viewsets.ModelViewSet):
+class VentaViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
+    modulo_requerido = 'ventas'
     permission_classes = [IsAuthenticated]
     queryset = Venta.objects.select_related("cliente").prefetch_related("lineas__producto").all()
     serializer_class = VentaSerializer

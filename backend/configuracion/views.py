@@ -2,15 +2,18 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+
+from usuarios.mixins import ModulePermissionMixin
 from .models import ConfiguracionEmpresa
 from .serializers import ConfiguracionEmpresaSerializer, ConfiguracionEmpresaBasicaSerializer
 
 
-class ConfiguracionEmpresaViewSet(viewsets.ModelViewSet):
+class ConfiguracionEmpresaViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
     """
     ViewSet para gestionar la configuración de la empresa.
     Solo permite una configuración (Singleton).
     """
+    modulo_requerido = 'configuracion'
     queryset = ConfiguracionEmpresa.objects.all()
     serializer_class = ConfiguracionEmpresaSerializer
     permission_classes = [IsAuthenticated]

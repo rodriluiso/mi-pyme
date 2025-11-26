@@ -39,18 +39,25 @@ class CanManageUsers(BasePermission):
 
 class CanAccessModule(BasePermission):
     """
-    Permiso para acceder a módulos específicos
+    Permiso para acceder a módulos específicos.
+    Uso: permission_classes = [IsAuthenticated, CanAccessModule]
+    Luego en get_permissions() especificar el módulo
     """
-
-    def __init__(self, modulo):
-        self.modulo = modulo
+    modulo = None
 
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
 
+        # Obtener módulo del view si está definido
+        modulo = getattr(view, 'modulo_requerido', self.modulo)
+
+        if not modulo:
+            # Si no hay módulo especificado, permitir acceso
+            return True
+
         if hasattr(request.user, 'puede_acceder_modulo'):
-            return request.user.puede_acceder_modulo(self.modulo)
+            return request.user.puede_acceder_modulo(modulo)
 
         return False
 

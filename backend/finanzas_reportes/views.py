@@ -7,6 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
+from usuarios.mixins import ModulePermissionMixin
 from compras.models import Compra, MateriaPrima
 from productos.models import Producto
 from recursos_humanos.models import Empleado
@@ -51,7 +52,8 @@ from .serializers import (
 )
 
 
-class PagoClienteViewSet(viewsets.ModelViewSet):
+class PagoClienteViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
+    modulo_requerido = 'finanzas'
     permission_classes = [IsAuthenticated]
     queryset = PagoCliente.objects.select_related("cliente").all()
     serializer_class = PagoClienteSerializer
@@ -62,7 +64,8 @@ class PagoClienteViewSet(viewsets.ModelViewSet):
     ordering = ["-fecha", "-id"]
 
 
-class PagoProveedorViewSet(viewsets.ModelViewSet):
+class PagoProveedorViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
+    modulo_requerido = 'finanzas'
     permission_classes = [IsAuthenticated]
     queryset = PagoProveedor.objects.select_related("proveedor").all()
     serializer_class = PagoProveedorSerializer
@@ -73,7 +76,8 @@ class PagoProveedorViewSet(viewsets.ModelViewSet):
     ordering = ["-fecha", "-id"]
 
 
-class MovimientoFinancieroViewSet(viewsets.ModelViewSet):
+class MovimientoFinancieroViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
+    modulo_requerido = 'finanzas'
     permission_classes = [IsAuthenticated]
     queryset = MovimientoFinanciero.objects.select_related("compra", "venta", "proveedor").all()
     serializer_class = MovimientoFinancieroSerializer
@@ -1293,8 +1297,9 @@ class MovimientoFinancieroViewSet(viewsets.ModelViewSet):
         })
 
 
-class CuentaBancariaViewSet(viewsets.ModelViewSet):
+class CuentaBancariaViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
     """ViewSet para gestionar cuentas bancarias"""
+    modulo_requerido = 'finanzas'
     permission_classes = [IsAuthenticated]
     queryset = CuentaBancaria.objects.all()
     serializer_class = CuentaBancariaSerializer
@@ -1331,8 +1336,9 @@ class CuentaBancariaViewSet(viewsets.ModelViewSet):
             )
 
 
-class ExtractoBancarioViewSet(viewsets.ModelViewSet):
+class ExtractoBancarioViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
     """ViewSet para gestionar extractos bancarios"""
+    modulo_requerido = 'finanzas'
     permission_classes = [IsAuthenticated]
     queryset = ExtractoBancario.objects.select_related("cuenta_bancaria").prefetch_related("movimientos")
     serializer_class = ExtractoBancarioSerializer
@@ -1479,8 +1485,9 @@ class ExtractoBancarioViewSet(viewsets.ModelViewSet):
         })
 
 
-class MovimientoBancarioViewSet(viewsets.ModelViewSet):
+class MovimientoBancarioViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
     """ViewSet para gestionar movimientos bancarios"""
+    modulo_requerido = 'finanzas'
     permission_classes = [IsAuthenticated]
     queryset = MovimientoBancario.objects.select_related("extracto__cuenta_bancaria", "movimiento_financiero")
     serializer_class = MovimientoBancarioSerializer
@@ -1523,8 +1530,9 @@ class MovimientoBancarioViewSet(viewsets.ModelViewSet):
             )
 
 
-class ConciliacionBancariaViewSet(viewsets.ModelViewSet):
+class ConciliacionBancariaViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
     """ViewSet para gestionar conciliaciones bancarias"""
+    modulo_requerido = 'finanzas'
     permission_classes = [IsAuthenticated]
     queryset = ConciliacionBancaria.objects.select_related("cuenta_bancaria")
     serializer_class = ConciliacionBancariaSerializer
@@ -1591,8 +1599,9 @@ class ConciliacionBancariaViewSet(viewsets.ModelViewSet):
             )
 
 
-class ConfiguracionAFIPViewSet(viewsets.ModelViewSet):
+class ConfiguracionAFIPViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
     """ViewSet para gestionar configuraciones AFIP"""
+    modulo_requerido = 'finanzas'
     permission_classes = [IsAuthenticated]
     queryset = ConfiguracionAFIP.objects.all()
     serializer_class = ConfiguracionAFIPSerializer
@@ -1624,8 +1633,9 @@ class ConfiguracionAFIPViewSet(viewsets.ModelViewSet):
             )
 
 
-class FacturaElectronicaViewSet(viewsets.ModelViewSet):
+class FacturaElectronicaViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
     """ViewSet para gestionar facturas electrónicas AFIP"""
+    modulo_requerido = 'finanzas'
     permission_classes = [IsAuthenticated]
     queryset = FacturaElectronica.objects.select_related("configuracion_afip", "venta").prefetch_related("detalles", "logs")
     serializer_class = FacturaElectronicaSerializer
@@ -1886,8 +1896,9 @@ class FacturaElectronicaViewSet(viewsets.ModelViewSet):
         })
 
 
-class DetalleFacturaElectronicaViewSet(viewsets.ModelViewSet):
+class DetalleFacturaElectronicaViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
     """ViewSet para gestionar detalles de facturas electrónicas"""
+    modulo_requerido = 'finanzas'
     permission_classes = [IsAuthenticated]
     queryset = DetalleFacturaElectronica.objects.select_related("factura")
     serializer_class = DetalleFacturaElectronicaSerializer
@@ -1898,8 +1909,9 @@ class DetalleFacturaElectronicaViewSet(viewsets.ModelViewSet):
     ordering = ["id"]
 
 
-class LogAFIPViewSet(viewsets.ReadOnlyModelViewSet):
+class LogAFIPViewSet(ModulePermissionMixin, viewsets.ReadOnlyModelViewSet):
     """ViewSet para consultar logs de AFIP (solo lectura)"""
+    modulo_requerido = 'finanzas'
     permission_classes = [IsAuthenticated]
     queryset = LogAFIP.objects.select_related("factura")
     serializer_class = LogAFIPSerializer
@@ -1910,8 +1922,9 @@ class LogAFIPViewSet(viewsets.ReadOnlyModelViewSet):
     ordering = ["-fecha_hora"]
 
 
-class PeriodoIVAViewSet(viewsets.ModelViewSet):
+class PeriodoIVAViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
     """ViewSet para gestionar períodos de IVA"""
+    modulo_requerido = 'finanzas'
     permission_classes = [IsAuthenticated]
     queryset = PeriodoIVA.objects.all()
     serializer_class = PeriodoIVASerializer
@@ -2146,8 +2159,9 @@ class PeriodoIVAViewSet(viewsets.ModelViewSet):
         })
 
 
-class PagoIVAViewSet(viewsets.ModelViewSet):
+class PagoIVAViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
     """ViewSet para gestionar pagos de IVA"""
+    modulo_requerido = 'finanzas'
     permission_classes = [IsAuthenticated]
     queryset = PagoIVA.objects.select_related("periodo", "movimiento_financiero").all()
     serializer_class = PagoIVASerializer

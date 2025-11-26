@@ -9,11 +9,13 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
+from usuarios.mixins import ModulePermissionMixin
 from .models import Cliente, SucursalCliente
 from .serializers import ClienteSerializer, ClienteListSerializer, SucursalClienteSerializer
 
 
-class ClienteViewSet(viewsets.ModelViewSet):
+class ClienteViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
+    modulo_requerido = 'clientes'
     permission_classes = [IsAuthenticated]
     queryset = Cliente.objects.prefetch_related('sucursales').all()
     serializer_class = ClienteSerializer
@@ -139,8 +141,9 @@ class ClienteViewSet(viewsets.ModelViewSet):
         return Response(serializer.errors, status=400)
 
 
-class SucursalClienteViewSet(viewsets.ModelViewSet):
+class SucursalClienteViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
     """ViewSet para gestionar sucursales de clientes"""
+    modulo_requerido = 'clientes'
     permission_classes = [IsAuthenticated]
     queryset = SucursalCliente.objects.select_related('cliente').all()
     serializer_class = SucursalClienteSerializer

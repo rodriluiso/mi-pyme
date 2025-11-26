@@ -4,11 +4,13 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, viewsets
 from rest_framework.permissions import IsAuthenticated
 
+from usuarios.mixins import ModulePermissionMixin
 from .models import Proveedor
 from .serializers import ProveedorSerializer
 
 
-class ProveedorViewSet(viewsets.ModelViewSet):
+class ProveedorViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
+    modulo_requerido = 'proveedores'
     permission_classes = [IsAuthenticated]
     queryset = Proveedor.objects.all()
     serializer_class = ProveedorSerializer

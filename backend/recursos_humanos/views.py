@@ -2,11 +2,13 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, viewsets
 from rest_framework.permissions import IsAuthenticated
 
+from usuarios.mixins import ModulePermissionMixin
 from .models import Empleado, PagoEmpleado
 from .serializers import EmpleadoSerializer, PagoEmpleadoSerializer
 
 
-class EmpleadoViewSet(viewsets.ModelViewSet):
+class EmpleadoViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
+    modulo_requerido = 'recursos_humanos'
     permission_classes = [IsAuthenticated]
     queryset = Empleado.objects.all()
     serializer_class = EmpleadoSerializer
@@ -17,7 +19,8 @@ class EmpleadoViewSet(viewsets.ModelViewSet):
     ordering = ["apellidos", "nombre"]
 
 
-class PagoEmpleadoViewSet(viewsets.ModelViewSet):
+class PagoEmpleadoViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
+    modulo_requerido = 'recursos_humanos'
     permission_classes = [IsAuthenticated]
     queryset = PagoEmpleado.objects.select_related("empleado").all()
     serializer_class = PagoEmpleadoSerializer

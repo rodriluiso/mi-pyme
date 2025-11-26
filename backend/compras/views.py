@@ -8,6 +8,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
+from usuarios.mixins import ModulePermissionMixin
 from .models import AjusteStockMateriaPrima, CategoriaCompra, Compra, MateriaPrima, StockPorProveedor
 from .serializers import (
     AjustarStockSerializer,
@@ -20,7 +21,8 @@ from .serializers import (
 )
 
 
-class MateriaPrimaViewSet(viewsets.ModelViewSet):
+class MateriaPrimaViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
+    modulo_requerido = 'compras'
     permission_classes = [IsAuthenticated]
     queryset = MateriaPrima.objects.all()
     serializer_class = MateriaPrimaSerializer
@@ -215,7 +217,8 @@ class MateriaPrimaViewSet(viewsets.ModelViewSet):
         return Response(resultado)
 
 
-class CategoriaCompraViewSet(viewsets.ModelViewSet):
+class CategoriaCompraViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
+    modulo_requerido = 'compras'
     permission_classes = [IsAuthenticated]
     queryset = CategoriaCompra.objects.all()
     serializer_class = CategoriaCompraSerializer
@@ -225,7 +228,8 @@ class CategoriaCompraViewSet(viewsets.ModelViewSet):
     ordering = ["nombre"]
 
 
-class CompraViewSet(viewsets.ModelViewSet):
+class CompraViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
+    modulo_requerido = 'compras'
     permission_classes = [IsAuthenticated]
     queryset = (
         Compra.objects.select_related("proveedor", "categoria")

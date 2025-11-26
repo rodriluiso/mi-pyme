@@ -7,11 +7,13 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
+from usuarios.mixins import ModulePermissionMixin
 from .models import Producto
 from .serializers import ProductoSerializer
 
 
-class ProductoViewSet(viewsets.ModelViewSet):
+class ProductoViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
+    modulo_requerido = 'productos'
     permission_classes = [IsAuthenticated]
     queryset = Producto.objects.all()
     serializer_class = ProductoSerializer
