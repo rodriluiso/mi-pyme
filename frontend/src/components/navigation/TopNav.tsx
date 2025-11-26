@@ -1,14 +1,29 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { NavLink } from "react-router-dom";
 import { seccionesPrincipales } from "@/routes/config";
-
-const navLinks = seccionesPrincipales.map((seccion) => ({
-  to: seccion.path === "" ? "/" : `/${seccion.path}`,
-  label: seccion.etiqueta
-}));
+import { useAuth } from "@/contexts/AuthContext";
 
 const SideNav = () => {
+  const { user } = useAuth();
   const [menuAbierto, setMenuAbierto] = useState(false);
+
+  // Filtrar secciones según permisos del usuario
+  const navLinks = useMemo(() => {
+    if (!user) return [];
+
+    return seccionesPrincipales
+      .filter((seccion) => {
+        // Si no tiene módulo definido, permitir acceso
+        if (!seccion.modulo) return true;
+
+        // Verificar si el usuario tiene acceso al módulo
+        return user.modulos_permitidos?.includes(seccion.modulo) ?? false;
+      })
+      .map((seccion) => ({
+        to: seccion.path === "" ? "/" : `/${seccion.path}`,
+        label: seccion.etiqueta
+      }));
+  }, [user]);
 
   const toggleMenu = () => {
     setMenuAbierto(!menuAbierto);

@@ -22,97 +22,116 @@ export type SeccionPrincipal = {
   path: string;
   etiqueta: string;
   element: ReactNode;
+  modulo?: string; // Módulo requerido para acceder (opcional para dashboard)
 };
 
 export const seccionesPrincipales: SeccionPrincipal[] = [
   {
     path: "",
     etiqueta: "Tablero",
-    element: <DashboardPage />
+    element: <DashboardPage />,
+    modulo: "dashboard"
   },
   {
     path: "clientes",
     etiqueta: "Clientes",
-    element: <ClientesPage />
+    element: <ClientesPage />,
+    modulo: "clientes"
   },
   {
     path: "proveedores",
     etiqueta: "Proveedores",
-    element: <ProveedoresPage />
+    element: <ProveedoresPage />,
+    modulo: "proveedores"
   },
   {
     path: "productos",
     etiqueta: "Productos",
-    element: <ProductosPage />
+    element: <ProductosPage />,
+    modulo: "productos"
   },
   {
     path: "ventas",
     etiqueta: "Ventas",
-    element: <VentasPage />
+    element: <VentasPage />,
+    modulo: "ventas"
   },
   {
     path: "ventas/cobranzas",
     etiqueta: "Cobranzas",
-    element: <CobranzasPage />
+    element: <CobranzasPage />,
+    modulo: "ventas"
   },
   {
     path: "compras",
     etiqueta: "Compras",
-    element: <ComprasPage />
+    element: <ComprasPage />,
+    modulo: "compras"
   },
   {
     path: "finanzas",
     etiqueta: "Finanzas",
-    element: <FinanzasPage />
+    element: <FinanzasPage />,
+    modulo: "finanzas"
   },
   {
     path: "recursos-humanos",
     etiqueta: "Recursos humanos",
-    element: <RecursosHumanosPage />
+    element: <RecursosHumanosPage />,
+    modulo: "recursos_humanos"
   },
   {
     path: "estadisticas",
     etiqueta: "Estadísticas",
-    element: <EstadisticasPage />
+    element: <EstadisticasPage />,
+    modulo: "reportes"
   },
   {
     path: "reportes",
     etiqueta: "Reportes",
-    element: <ReportesPage />
+    element: <ReportesPage />,
+    modulo: "reportes"
   },
   {
     path: "analisis/rentabilidad-clientes",
     etiqueta: "Rentabilidad Clientes",
-    element: <RentabilidadClientesPage />
+    element: <RentabilidadClientesPage />,
+    modulo: "reportes"
   },
   {
     path: "bancos/conciliacion",
     etiqueta: "Conciliación Bancaria",
-    element: <ConciliacionBancariaPage />
+    element: <ConciliacionBancariaPage />,
+    modulo: "bancos"
   },
   {
     path: "afip/facturacion-electronica",
     etiqueta: "Facturación Electrónica",
-    element: <FacturacionElectronicaPage />
+    element: <FacturacionElectronicaPage />,
+    modulo: "afip"
   },
   {
     path: "usuarios",
     etiqueta: "Gestión de Usuarios",
-    element: <UsuariosPage />
+    element: <UsuariosPage />,
+    modulo: "usuarios"
   },
   {
     path: "contabilidad/balance-general",
     etiqueta: "Balance General",
-    element: <BalanceGeneralPage />
+    element: <BalanceGeneralPage />,
+    modulo: "reportes"
   },
   {
     path: "contabilidad/estado-resultados",
     etiqueta: "Estado de Resultados",
-    element: <EstadoResultadosPage />
+    element: <EstadoResultadosPage />,
+    modulo: "reportes"
   },
   {
     path: "configuracion",
     etiqueta: "Configuración de Empresa",
-    element: <ConfiguracionEmpresaPage />
+    element: <ConfiguracionEmpresaPage />,
+    modulo: "configuracion"
   }
 ];
