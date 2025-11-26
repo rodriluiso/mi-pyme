@@ -85,10 +85,21 @@ class UsuarioSerializer(serializers.ModelSerializer):
         if request and hasattr(request, 'user'):
             validated_data['creado_por'] = request.user
 
-        usuario = Usuario.objects.create(**validated_data)
-
+        # Crear usuario usando create_user para manejar correctamente el password
         if password:
-            usuario.set_password(password)
+            usuario = Usuario.objects.create_user(
+                password=password,
+                **validated_data
+            )
+        else:
+            # Si no se proporciona contraseña, crear una temporal
+            import secrets
+            temp_password = secrets.token_urlsafe(12)
+            usuario = Usuario.objects.create_user(
+                password=temp_password,
+                **validated_data
+            )
+            usuario.debe_cambiar_password = True
             usuario.save()
 
         return usuario
