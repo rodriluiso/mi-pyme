@@ -4,8 +4,7 @@ import NotFoundPage from "@/pages/NotFoundPage";
 import ClientePerfilPage from "@/pages/clientes/ClientePerfilPage";
 import LoginPage from "@/pages/auth/LoginPage";
 import AccesoDenegadoPage from "@/pages/AccesoDenegado";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import { ProtectedRoute as ModuleProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { seccionesPrincipales } from "@/routes/config";
 
 const routes = [
@@ -28,9 +27,9 @@ const routes = [
     children: [
       ...seccionesPrincipales.map((seccion) => {
         const element = seccion.modulo ? (
-          <ModuleProtectedRoute requiredModule={seccion.modulo}>
+          <ProtectedRoute requiredModule={seccion.modulo}>
             {seccion.element}
-          </ModuleProtectedRoute>
+          </ProtectedRoute>
         ) : seccion.element;
 
         return seccion.path === ""
@@ -40,9 +39,9 @@ const routes = [
       {
         path: "clientes/:clienteId",
         element: (
-          <ModuleProtectedRoute requiredModule="clientes">
+          <ProtectedRoute requiredModule="clientes">
             <ClientePerfilPage />
-          </ModuleProtectedRoute>
+          </ProtectedRoute>
         )
       }
     ]
