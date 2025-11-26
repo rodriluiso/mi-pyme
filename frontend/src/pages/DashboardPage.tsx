@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useApi } from "@/hooks/useApi";
 import { useListado } from "@/hooks/useListado";
+import { useAuth } from "@/contexts/AuthContext";
 import type { ApiError } from "@/lib/api/types";
 import type {
   Cliente,
@@ -61,6 +62,7 @@ const estadoInicialRecordatorio: FormularioRecordatorio = {
 
 const DashboardPage = () => {
   const { request } = useApi();
+  const { canAccessModule } = useAuth();
   const [cargando, setCargando] = useState<boolean>(true);
   const [error, setError] = useState<ApiError | null>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -69,9 +71,13 @@ const DashboardPage = () => {
   const [pagos, setPagos] = useState<PagoCliente[]>([]);
   const [resumenPendiente, setResumenPendiente] = useState<ResumenPendiente | null>(null);
 
-  // Datos para las nuevas funcionalidades
-  const { datos: materiasPrimasData } = useListado<MateriaPrima>("/compras/materias-primas/");
-  const { datos: productosData } = useListado<Producto>("/productos/");
+  // Datos para las nuevas funcionalidades - solo cargar si tiene permisos
+  const { datos: materiasPrimasData } = useListado<MateriaPrima>(
+    canAccessModule('compras') ? "/compras/materias-primas/" : null
+  );
+  const { datos: productosData } = useListado<Producto>(
+    canAccessModule('productos') ? "/productos/" : null
+  );
 
   // Usar valores por defecto para evitar errores cuando los datos aún no han cargado
   const materiasPrimas = Array.isArray(materiasPrimasData) ? materiasPrimasData : [];
@@ -92,20 +98,62 @@ const DashboardPage = () => {
       setCargando(true);
       setError(null);
       try {
-        const [clientesResp, ventasResp, comprasResp, pagosResp, resumenResp] = await Promise.all([
-          request<{ results: Cliente[] } | Cliente[]>({ method: "GET", url: "/clientes/" }),
-          request<{ results: Venta[] } | Venta[]>({ method: "GET", url: "/ventas/" }),
-          request<{ results: Compra[] } | Compra[]>({ method: "GET", url: "/compras/" }),
-          request<{ results: PagoCliente[] } | PagoCliente[]>({ method: "GET", url: "/finanzas/pagos/" }),
-          request<ResumenPendiente>({ method: "GET", url: "/finanzas/movimientos/resumen/pendiente/" })
-        ]);
+        // Solo cargar datos de módulos a los que el usuario tiene acceso
+        const requests = [];
 
-        // Manejar respuestas paginadas vs arrays directos
-        setClientes(Array.isArray(clientesResp) ? clientesResp : (clientesResp as any)?.results || []);
-        setVentas(Array.isArray(ventasResp) ? ventasResp : (ventasResp as any)?.results || []);
-        setCompras(Array.isArray(comprasResp) ? comprasResp : (comprasResp as any)?.results || []);
-        setPagos(Array.isArray(pagosResp) ? pagosResp : (pagosResp as any)?.results || []);
-        setResumenPendiente(resumenResp);
+        if (canAccessModule('clientes')) {
+          requests.push(
+            request<{ results: Cliente[] } | Cliente[]>({ method: "GET", url: "/clientes/" })
+              .then(resp => ({ tipo: 'clientes', data: resp }))
+          );
+        }
+
+        if (canAccessModule('ventas')) {
+          requests.push(
+            request<{ results: Venta[] } | Venta[]>({ method: "GET", url: "/ventas/" })
+              .then(resp => ({ tipo: 'ventas', data: resp }))
+          );
+        }
+
+        if (canAccessModule('compras')) {
+          requests.push(
+            request<{ results: Compra[] } | Compra[]>({ method: "GET", url: "/compras/" })
+              .then(resp => ({ tipo: 'compras', data: resp }))
+          );
+        }
+
+        if (canAccessModule('finanzas')) {
+          requests.push(
+            request<{ results: PagoCliente[] } | PagoCliente[]>({ method: "GET", url: "/finanzas/pagos/" })
+              .then(resp => ({ tipo: 'pagos', data: resp })),
+            request<ResumenPendiente>({ method: "GET", url: "/finanzas/movimientos/resumen/pendiente/" })
+              .then(resp => ({ tipo: 'resumen', data: resp }))
+          );
+        }
+
+        const responses = await Promise.all(requests);
+
+        // Procesar respuestas
+        responses.forEach((response: any) => {
+          const data = response.data;
+          switch (response.tipo) {
+            case 'clientes':
+              setClientes(Array.isArray(data) ? data : data?.results || []);
+              break;
+            case 'ventas':
+              setVentas(Array.isArray(data) ? data : data?.results || []);
+              break;
+            case 'compras':
+              setCompras(Array.isArray(data) ? data : data?.results || []);
+              break;
+            case 'pagos':
+              setPagos(Array.isArray(data) ? data : data?.results || []);
+              break;
+            case 'resumen':
+              setResumenPendiente(data);
+              break;
+          }
+        });
       } catch (err) {
         setError(err as ApiError);
       } finally {
@@ -120,7 +168,7 @@ const DashboardPage = () => {
     }
 
     void cargar();
-  }, [request]);
+  }, [request, canAccessModule]);
 
   // Calcular stock total en kilogramos (solo productos terminados)
   const stockTotalKg = useMemo(() => {
@@ -243,18 +291,62 @@ const DashboardPage = () => {
     setCargando(true);
     setError(null);
     try {
-      const [clientesResp, ventasResp, comprasResp, pagosResp, resumenResp] = await Promise.all([
-        request<Cliente[]>({ method: "GET", url: "/clientes/" }),
-        request<Venta[]>({ method: "GET", url: "/ventas/" }),
-        request<Compra[]>({ method: "GET", url: "/compras/" }),
-        request<PagoCliente[]>({ method: "GET", url: "/finanzas/pagos/" }),
-        request<ResumenPendiente>({ method: "GET", url: "/finanzas/movimientos/resumen/pendiente/" })
-      ]);
-      setClientes(Array.isArray(clientesResp) ? clientesResp : []);
-      setVentas(Array.isArray(ventasResp) ? ventasResp : []);
-      setCompras(Array.isArray(comprasResp) ? comprasResp : []);
-      setPagos(Array.isArray(pagosResp) ? pagosResp : []);
-      setResumenPendiente(resumenResp);
+      // Solo cargar datos de módulos a los que el usuario tiene acceso
+      const requests = [];
+
+      if (canAccessModule('clientes')) {
+        requests.push(
+          request<{ results: Cliente[] } | Cliente[]>({ method: "GET", url: "/clientes/" })
+            .then(resp => ({ tipo: 'clientes', data: resp }))
+        );
+      }
+
+      if (canAccessModule('ventas')) {
+        requests.push(
+          request<{ results: Venta[] } | Venta[]>({ method: "GET", url: "/ventas/" })
+            .then(resp => ({ tipo: 'ventas', data: resp }))
+        );
+      }
+
+      if (canAccessModule('compras')) {
+        requests.push(
+          request<{ results: Compra[] } | Compra[]>({ method: "GET", url: "/compras/" })
+            .then(resp => ({ tipo: 'compras', data: resp }))
+        );
+      }
+
+      if (canAccessModule('finanzas')) {
+        requests.push(
+          request<{ results: PagoCliente[] } | PagoCliente[]>({ method: "GET", url: "/finanzas/pagos/" })
+            .then(resp => ({ tipo: 'pagos', data: resp })),
+          request<ResumenPendiente>({ method: "GET", url: "/finanzas/movimientos/resumen/pendiente/" })
+            .then(resp => ({ tipo: 'resumen', data: resp }))
+        );
+      }
+
+      const responses = await Promise.all(requests);
+
+      // Procesar respuestas
+      responses.forEach((response: any) => {
+        const data = response.data;
+        switch (response.tipo) {
+          case 'clientes':
+            setClientes(Array.isArray(data) ? data : data?.results || []);
+            break;
+          case 'ventas':
+            setVentas(Array.isArray(data) ? data : data?.results || []);
+            break;
+          case 'compras':
+            setCompras(Array.isArray(data) ? data : data?.results || []);
+            break;
+          case 'pagos':
+            setPagos(Array.isArray(data) ? data : data?.results || []);
+            break;
+          case 'resumen':
+            setResumenPendiente(data);
+            break;
+        }
+      });
     } catch (err) {
       setError(err as ApiError);
     } finally {

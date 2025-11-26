@@ -20,8 +20,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         await apiClient.get('/usuarios/auth/csrf/');
         // 2) Pide perfil
         const { data } = await apiClient.get<Usuario>('/usuarios/auth/perfil/');
-        console.log('[AuthContext] Perfil response:', data);
-        console.log('[AuthContext] Modulos permitidos en perfil:', data?.modulos_permitidos);
         if (data) setUser(data);
       } catch {
         console.log('No hay sesión activa');
@@ -40,9 +38,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       localStorage.removeItem('auth_token');
 
       const { data } = await apiClient.post<LoginResponse>('/usuarios/auth/login/', credentials);
-      console.log('[AuthContext] Login response:', data);
-      console.log('[AuthContext] Usuario:', data.usuario);
-      console.log('[AuthContext] Modulos permitidos:', data.usuario.modulos_permitidos);
       setUser(data.usuario);
 
       // Guardar token en localStorage para autenticación cross-domain (mobile)

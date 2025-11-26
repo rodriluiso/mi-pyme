@@ -9,13 +9,20 @@ type EstadoListado<T> = {
   recargar: () => Promise<void>;
 };
 
-export const useListado = <T>(endpoint: string): EstadoListado<T> => {
+export const useListado = <T>(endpoint: string | null): EstadoListado<T> => {
   const { request } = useApi();
   const [datos, setDatos] = useState<T[]>([]);
   const [cargando, setCargando] = useState<boolean>(true);
   const [error, setError] = useState<ApiError | null>(null);
 
   const cargar = useCallback(async () => {
+    // Si no hay endpoint (null), no hacer nada
+    if (!endpoint) {
+      setCargando(false);
+      setDatos([]);
+      return;
+    }
+
     setCargando(true);
     setError(null);
     try {
