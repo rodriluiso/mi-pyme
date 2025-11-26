@@ -9,20 +9,28 @@ const SideNav = () => {
 
   // Filtrar secciones según permisos del usuario
   const navLinks = useMemo(() => {
+    console.log('[TopNav] User:', user);
+    console.log('[TopNav] User modulos_permitidos:', user?.modulos_permitidos);
+
     if (!user) return [];
 
-    return seccionesPrincipales
+    const filtered = seccionesPrincipales
       .filter((seccion) => {
         // Si no tiene módulo definido, permitir acceso
         if (!seccion.modulo) return true;
 
         // Verificar si el usuario tiene acceso al módulo
-        return user.modulos_permitidos?.includes(seccion.modulo) ?? false;
+        const hasAccess = user.modulos_permitidos?.includes(seccion.modulo) ?? false;
+        console.log(`[TopNav] Seccion ${seccion.etiqueta} (modulo: ${seccion.modulo}): ${hasAccess}`);
+        return hasAccess;
       })
       .map((seccion) => ({
         to: seccion.path === "" ? "/" : `/${seccion.path}`,
         label: seccion.etiqueta
       }));
+
+    console.log('[TopNav] Filtered navLinks:', filtered);
+    return filtered;
   }, [user]);
 
   const toggleMenu = () => {
