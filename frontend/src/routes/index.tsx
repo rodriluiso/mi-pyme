@@ -3,13 +3,19 @@ import RootLayout from "@/layouts/RootLayout";
 import NotFoundPage from "@/pages/NotFoundPage";
 import ClientePerfilPage from "@/pages/clientes/ClientePerfilPage";
 import LoginPage from "@/pages/auth/LoginPage";
+import AccesoDenegadoPage from "@/pages/AccesoDenegado";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { ProtectedRoute as ModuleProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { seccionesPrincipales } from "@/routes/config";
 
 const routes = [
   {
     path: "/login",
     element: <LoginPage />
+  },
+  {
+    path: "/acceso-denegado",
+    element: <AccesoDenegadoPage />
   },
   {
     path: "/",
@@ -20,14 +26,24 @@ const routes = [
     ),
     errorElement: <NotFoundPage />,
     children: [
-      ...seccionesPrincipales.map((seccion) =>
-        seccion.path === ""
-          ? { index: true, element: seccion.element }
-          : { path: seccion.path, element: seccion.element }
-      ),
+      ...seccionesPrincipales.map((seccion) => {
+        const element = seccion.modulo ? (
+          <ModuleProtectedRoute requiredModule={seccion.modulo}>
+            {seccion.element}
+          </ModuleProtectedRoute>
+        ) : seccion.element;
+
+        return seccion.path === ""
+          ? { index: true, element }
+          : { path: seccion.path, element };
+      }),
       {
         path: "clientes/:clienteId",
-        element: <ClientePerfilPage />
+        element: (
+          <ModuleProtectedRoute requiredModule="clientes">
+            <ClientePerfilPage />
+          </ModuleProtectedRoute>
+        )
       }
     ]
   },

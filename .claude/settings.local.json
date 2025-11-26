@@ -14,7 +14,20 @@
       "Bash(\"$USERPROFILE/.cargo/bin/cargo.exe\" --version)",
       "Bash(export PATH=\"$USERPROFILE/.cargo/bin:$PATH\")",
       "Bash(npm run tauri:dev:*)",
-      "Bash(npx @tauri-apps/cli:*)"
+      "Bash(npx @tauri-apps/cli:*)",
+      "Bash(python manage.py shell:*)",
+      "Bash(python:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(timeout 30 sleep:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(timeout 45 sleep:*)",
+      "Bash(git restore:*)",
+      "Bash(for file in backend/compras/views.py backend/clientes/views.py backend/proveedores/views.py backend/productos/views.py backend/recursos_humanos/views.py backend/finanzas_reportes/views.py backend/configuracion/views.py)",
+      "Bash(do echo \"Archivo: $file\")",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []
