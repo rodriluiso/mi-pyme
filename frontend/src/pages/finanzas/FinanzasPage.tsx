@@ -183,7 +183,7 @@ const FinanzasPage = () => {
   const [resumenPorMedio, setResumenPorMedio] = useState<ResumenPorMedioResponse | null>(null);
   const [errorResumenPorMedio, setErrorResumenPorMedio] = useState<ApiError | null>(null);
   const [cargandoResumenPorMedio, setCargandoResumenPorMedio] = useState<boolean>(false);
-  const [mostrarResumenPorMedio, setMostrarResumenPorMedio] = useState<boolean>(false);
+  const [mostrarResumenPorMedio, setMostrarResumenPorMedio] = useState<boolean>(true);
 
   const [comparativas, setComparativas] = useState<ComparativasPeriodoResponse | null>(null);
   const [errorComparativas, setErrorComparativas] = useState<ApiError | null>(null);
@@ -252,6 +252,7 @@ const FinanzasPage = () => {
   useEffect(() => {
     void cargarResumen();
     void cargarCuentasPagar();
+    void cargarResumenPorMedio();
   }, []);
 
   // Filtrar ventas del cliente seleccionado para el pago
