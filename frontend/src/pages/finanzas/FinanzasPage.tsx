@@ -264,6 +264,10 @@ const FinanzasPage = () => {
   const cambiarRangoIndicadores = async (nuevoRango: RangoTiempo) => {
     setRangoIndicadores(nuevoRango);
     await cargarResumen(nuevoRango);
+    // Si el desglose por medio está visible, recargarlo con el nuevo rango
+    if (mostrarResumenPorMedio) {
+      await cargarResumenPorMedio();
+    }
   };
 
   const cargarResumenPorMedio = async () => {
