@@ -2,6 +2,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import { useMemo, useState, useEffect } from "react";
 import { useApi } from "@/hooks/useApi";
 import { useListado } from "@/hooks/useListado";
+import { apiClient } from "@/lib/api/client";
 import type { ApiError } from "@/lib/api/types";
 import type { Cliente, Producto, Venta, SucursalCliente } from "@/types/mipyme";
 
@@ -324,25 +325,22 @@ const VentasPage = () => {
       // Si se marcó la opción de generar remito, descargar el archivo
       if (formulario.generarRemito) {
         try {
-          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'}/ventas/${ventaCreada.id}/remito/`, {
-            method: 'GET'
+          const response = await apiClient.get(`/ventas/${ventaCreada.id}/remito/`, {
+            responseType: 'blob'
           });
 
-          if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `remito-venta-${ventaCreada.numero || ventaCreada.id}.html`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            setMensajeExito("Venta registrada correctamente y remito descargado");
-          } else {
-            setMensajeExito("Venta registrada correctamente (error al generar remito)");
-          }
+          const blob = new Blob([response.data], { type: 'text/html' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `remito-venta-${ventaCreada.numero || ventaCreada.id}.html`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+          setMensajeExito("Venta registrada correctamente y remito descargado");
         } catch (error) {
+          console.error('Error al generar remito:', error);
           setMensajeExito("Venta registrada correctamente (error al generar remito)");
         }
       } else {
