@@ -71,7 +71,6 @@ const VentasPage = () => {
   const { datos: ventas, cargando, error, recargar } = useListado<Venta>("/ventas/");
   const { datos: clientes } = useListado<Cliente>("/clientes/");
   const { datos: productos } = useListado<Producto>("/productos/");
-  const { datos: sucursales } = useListado<SucursalCliente>("/clientes/sucursales/");
   const { request } = useApi();
 
   const [formulario, setFormulario] = useState<FormularioVenta>(estadoInicialFormulario);
