@@ -1,4 +1,8 @@
+import uuid
+
 from django.contrib.auth.models import AbstractUser, Group, Permission
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.core.exceptions import ValidationError
 
@@ -227,3 +231,133 @@ class ConfiguracionSistema(models.Model):
         if not self.pk and ConfiguracionSistema.objects.exists():
             raise ValidationError("Solo puede existir una configuración del sistema")
         super().save(*args, **kwargs)
+
+
+# ============================================================================
+# SISTEMA DE UNDO (DESHACER)
+# ============================================================================
+
+class UndoAction(models.Model):
+    """
+    Registro de acciones deshacibles del usuario.
+    Permite implementar funcionalidad de "Deshacer" para operaciones críticas.
+    """
+
+    class ActionType(models.TextChoices):
+        CREATE_VENTA = 'CREATE_VENTA', 'Crear Venta'
+        EDIT_VENTA = 'EDIT_VENTA', 'Editar Venta'
+        REGISTER_PAGO_CLIENTE = 'REGISTER_PAGO_CLIENTE', 'Registrar Pago'
+        CREATE_COMPRA = 'CREATE_COMPRA', 'Crear Compra'
+        # Más tipos se agregarán según necesidad
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        'usuarios.Usuario',
+        on_delete=models.CASCADE,
+        related_name='undo_actions',
+        verbose_name='Usuario'
+    )
+
+    # Tipo de acción
+    action_type = models.CharField(
+        max_length=50,
+        choices=ActionType.choices,
+        verbose_name='Tipo de Acción'
+    )
+
+    # Referencia genérica al objeto afectado
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name='Tipo de Contenido'
+    )
+    object_id = models.CharField(max_length=100, null=True, blank=True)
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    # Hash para detectar modificaciones posteriores
+    object_state_hash = models.CharField(
+        max_length=64,
+        null=True,
+        blank=True,
+        help_text="SHA256 de campos críticos para validar estado"
+    )
+
+    # Payload con datos para deshacer (JSONB)
+    undo_payload = models.JSONField(
+        verbose_name='Datos para Deshacer',
+        help_text='Información necesaria para revertir la acción'
+    )
+
+    # Agrupación para acciones compuestas
+    group_id = models.UUIDField(
+        db_index=True,
+        null=True,
+        blank=True,
+        verbose_name='ID de Grupo',
+        help_text='Agrupa múltiples acciones relacionadas'
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        verbose_name='Fecha de Creación'
+    )
+    undone_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name='Fecha de Deshacer'
+    )
+
+    # Tracking de rollback fallido
+    rollback_status = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Estado del rollback: steps_completed, error, etc."
+    )
+    has_failed_rollback = models.BooleanField(
+        default=False,
+        db_index=True,
+        verbose_name='Rollback Falló'
+    )
+
+    # Descripción amigable para UI
+    description = models.CharField(
+        max_length=255,
+        verbose_name='Descripción',
+        help_text='Descripción amigable para mostrar en la interfaz'
+    )
+
+    # Metadata adicional
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name='Metadata'
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'undone_at', 'created_at']),
+            models.Index(fields=['group_id']),
+        ]
+        verbose_name = 'Acción Deshacible'
+        verbose_name_plural = 'Acciones Deshacibles'
+
+    @property
+    def is_expired(self):
+        """Calcula si la acción expiró (15 minutos)"""
+        from django.utils import timezone
+        from datetime import timedelta
+
+        if not self.created_at:
+            return False
+
+        expiration_time = self.created_at + timedelta(minutes=15)
+        return timezone.now() > expiration_time
+
+    def __str__(self):
+        return f"{self.description} - {self.user.username}"

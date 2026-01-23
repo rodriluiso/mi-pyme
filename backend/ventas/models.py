@@ -5,6 +5,45 @@ from datetime import date, timedelta
 from clientes.models import Cliente
 from productos.models import Producto
 
+
+# ============================================================================
+# MANAGERS PERSONALIZADOS PARA VENTA
+# ============================================================================
+
+class VentaQuerySet(models.QuerySet):
+    """
+    QuerySet personalizado con métodos de filtrado para ventas.
+    Permite filtrar ventas activas vs anuladas sin romper queries existentes.
+    """
+
+    def activas(self):
+        """Solo ventas no anuladas"""
+        return self.filter(anulada=False)
+
+    def anuladas(self):
+        """Solo ventas anuladas"""
+        return self.filter(anulada=True)
+
+
+class VentaManager(models.Manager):
+    """Manager personalizado para Venta"""
+
+    def get_queryset(self):
+        return VentaQuerySet(self.model, using=self._db)
+
+    def activas(self):
+        """Retorna solo ventas activas (no anuladas)"""
+        return self.get_queryset().activas()
+
+    def anuladas(self):
+        """Retorna solo ventas anuladas"""
+        return self.get_queryset().anuladas()
+
+
+# ============================================================================
+# MODELOS
+# ============================================================================
+
 class Venta(models.Model):
     cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT, related_name="ventas")
     fecha = models.DateField(auto_now_add=True)
@@ -21,6 +60,23 @@ class Venta(models.Model):
     condicion_pago = models.CharField(max_length=50, default="Contado", blank=True, null=True, help_text="Ej: Contado, 30 días, 60 días")
     observaciones_cobro = models.TextField(blank=True, default="", help_text="Notas sobre el estado de cobranza")
     fecha_ultimo_recordatorio = models.DateField(blank=True, null=True, help_text="Última vez que se envió recordatorio")
+    monto_pagado = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text="Monto total pagado de esta factura")
+
+    # Campos de anulación (para sistema de undo)
+    anulada = models.BooleanField(default=False, db_index=True, help_text="Marca si la venta fue anulada/deshecha")
+    fecha_anulacion = models.DateTimeField(null=True, blank=True, help_text="Fecha y hora en que se anuló la venta")
+    motivo_anulacion = models.CharField(max_length=255, blank=True, help_text="Motivo de la anulación")
+    anulada_por = models.ForeignKey(
+        'usuarios.Usuario',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ventas_anuladas',
+        help_text="Usuario que anuló la venta"
+    )
+
+    # Manager personalizado
+    objects = VentaManager()
 
     class Meta:
         ordering = ["-fecha", "-id"]
@@ -29,31 +85,49 @@ class Venta(models.Model):
         # Funcionalidad simplificada para estabilidad
         super().save(*args, **kwargs)
 
-    # NOTA: Propiedades de cobranzas comentadas temporalmente para estabilidad
-    # @property
-    # def total_pagado(self):
-    #     """Calcula el total pagado por el cliente para esta venta"""
-    #     from finanzas_reportes.models import PagoCliente
-    #     pagos = PagoCliente.objects.filter(cliente=self.cliente, fecha__gte=self.fecha).aggregate(total=models.Sum('monto'))['total'] or Decimal('0')
-    #     return min(pagos, self.total)
+    @property
+    def saldo_pendiente(self):
+        """Calcula cuánto falta por pagar de esta factura"""
+        return self.total - self.monto_pagado
 
-    # @property
-    # def saldo_pendiente(self):
-    #     """Calcula cuánto falta por pagar"""
-    #     return self.total - self.total_pagado
+    @property
+    def esta_pagada(self):
+        """Verifica si la factura está completamente pagada"""
+        return self.monto_pagado >= self.total
 
-    # NOTA: Métodos de cobranzas comentados temporalmente para estabilidad
-    # def marcar_recordatorio_enviado(self):
-    #     """Marca que se envió un recordatorio hoy"""
-    #     self.fecha_ultimo_recordatorio = date.today()
-    #     self.save(update_fields=['fecha_ultimo_recordatorio'])
+    def aplicar_pago(self, monto):
+        """
+        Aplica un pago a esta factura. Retorna el monto sobrante si el pago excede el saldo.
+        """
+        monto = Decimal(str(monto))
 
-    # def puede_enviar_recordatorio(self):
-    #     """Verifica si se puede enviar recordatorio (no más de uno por semana)"""
-    #     if not self.fecha_ultimo_recordatorio:
-    #         return True
-    #     dias_desde_ultimo = (date.today() - self.fecha_ultimo_recordatorio).days
-    #     return dias_desde_ultimo >= 7
+        if monto <= 0:
+            raise ValueError("El monto del pago debe ser positivo")
+
+        saldo = self.saldo_pendiente
+
+        if monto >= saldo:
+            # El pago cubre todo el saldo pendiente
+            self.monto_pagado = self.total
+            self.save(update_fields=['monto_pagado'])
+            return monto - saldo  # Retorna el sobrante
+        else:
+            # El pago es parcial
+            self.monto_pagado += monto
+            self.save(update_fields=['monto_pagado'])
+            return Decimal('0')  # No hay sobrante
+
+    def marcar_recordatorio_enviado(self):
+        """Marca que se envió un recordatorio hoy"""
+        self.fecha_ultimo_recordatorio = date.today()
+        self.save(update_fields=['fecha_ultimo_recordatorio'])
+
+    def puede_enviar_recordatorio(self):
+        """Verifica si se puede enviar recordatorio (no más de uno por semana)"""
+        if not self.fecha_ultimo_recordatorio:
+            return True
+        dias_desde_ultimo = (date.today() - self.fecha_ultimo_recordatorio).days
+        return dias_desde_ultimo >= 7
 
     def __str__(self):
         return f"Venta #{self.numero or self.id} - {self.cliente.nombre}"

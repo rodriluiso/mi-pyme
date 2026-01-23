@@ -1,5 +1,6 @@
 ﻿from decimal import Decimal
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
@@ -38,15 +39,9 @@ class VentaSerializer(serializers.ModelSerializer):
     lineas = LineaVentaSerializer(many=True)
     cliente_nombre = serializers.CharField(source="cliente.nombre", read_only=True)
 
-    # Campos calculados para estados de pago (comentados temporalmente para estabilidad)
-    # total_pagado = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-    # saldo_pendiente = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
-    # porcentaje_pagado = serializers.FloatField(read_only=True)
-    # estado_pago = serializers.CharField(read_only=True)
-    # dias_vencimiento = serializers.IntegerField(read_only=True)
-    # esta_vencido = serializers.BooleanField(read_only=True)
-    # urgencia_cobranza = serializers.CharField(read_only=True)
-    # puede_enviar_recordatorio = serializers.BooleanField(read_only=True)
+    # Campos de cobranzas
+    saldo_pendiente = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    esta_pagada = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Venta
@@ -55,6 +50,7 @@ class VentaSerializer(serializers.ModelSerializer):
             # Campos de IVA
             "incluye_iva", "subtotal", "iva_monto", "total", "lineas",
             # Campos de cobranzas
+            "monto_pagado", "saldo_pendiente", "esta_pagada",
             "fecha_vencimiento", "condicion_pago", "observaciones_cobro",
             "fecha_ultimo_recordatorio",
         )
@@ -119,8 +115,68 @@ class VentaSerializer(serializers.ModelSerializer):
         total = subtotal + iva_monto
         return subtotal, iva_monto, total
 
-    @transaction.atomic
     def create(self, validated_data):
+        """
+        Crea una venta con soporte de undo si está habilitado.
+        Usa feature flag para transición gradual y segura.
+        """
+        # Feature flag para activar/desactivar sistema de undo
+        if getattr(settings, 'ENABLE_UNDO_SYSTEM', False):
+            # Nueva implementación con sistema de undo
+            return self._create_with_undo(validated_data)
+        else:
+            # Implementación original (fallback seguro)
+            return self._create_original(validated_data)
+
+    def _create_with_undo(self, validated_data):
+        """
+        Implementación nueva que usa VentaService para registrar undo.
+        """
+        from usuarios.services.venta_service import VentaService
+
+        lineas_data = validated_data.pop("lineas", [])
+        cliente_id = validated_data.get('cliente').id
+        incluye_iva = validated_data.get('incluye_iva', False)
+        numero = validated_data.get('numero', '')
+        condicion_pago = validated_data.get('condicion_pago', 'Contado')
+        fecha_vencimiento = validated_data.get('fecha_vencimiento')
+        observaciones_cobro = validated_data.get('observaciones_cobro', '')
+
+        # Obtener usuario del contexto de la request
+        user = self.context['request'].user
+
+        # Convertir lineas_data a formato esperado por VentaService
+        lineas_service = []
+        for linea in lineas_data:
+            lineas_service.append({
+                'producto': linea.get('producto').id if linea.get('producto') else None,
+                'descripcion': linea.get('descripcion', ''),
+                'cantidad': linea.get('cantidad', 1),
+                'cantidad_kg': linea.get('cantidad_kg', 0),
+                'precio_unitario': linea.get('precio_unitario', 0)
+            })
+
+        try:
+            venta = VentaService.crear_venta(
+                user=user,
+                cliente_id=cliente_id,
+                lineas_data=lineas_service,
+                incluye_iva=incluye_iva,
+                numero=numero,
+                condicion_pago=condicion_pago,
+                fecha_vencimiento=fecha_vencimiento,
+                observaciones_cobro=observaciones_cobro
+            )
+            return venta
+        except ValueError as e:
+            raise serializers.ValidationError({"error": str(e)})
+
+    @transaction.atomic
+    def _create_original(self, validated_data):
+        """
+        Implementación original sin sistema de undo.
+        MANTENER hasta validar nuevo sistema en producción.
+        """
         lineas_data = validated_data.pop("lineas", [])
         self._validar_stock_disponible(lineas_data)
 

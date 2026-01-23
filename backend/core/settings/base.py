@@ -196,3 +196,11 @@ LOGGING = {
         },
     },
 }
+
+# ===================================================================
+# UNDO SYSTEM FEATURE FLAG
+# ===================================================================
+# Feature flag para habilitar/deshabilitar el sistema de deshacer (undo)
+# False por defecto para transición gradual y segura
+# Puede ser sobrescrito en dev.py, prod.py, etc.
+ENABLE_UNDO_SYSTEM = False

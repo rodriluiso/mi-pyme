@@ -1,6 +1,7 @@
 ﻿from decimal import Decimal
 from datetime import datetime
 
+from django.db import transaction
 from rest_framework import serializers
 
 from .models import AjusteStockMateriaPrima, CategoriaCompra, Compra, CompraLinea, MateriaPrima, StockPorProveedor
@@ -122,6 +123,71 @@ class CompraSerializer(serializers.ModelSerializer):
         return total
 
     def create(self, validated_data):
+        """
+        Crea una compra con soporte opcional de undo.
+
+        Si ENABLE_UNDO_SYSTEM está activado, usa CompraService para registrar
+        la compra con capacidad de deshacer. Si está desactivado, usa la
+        implementación original como fallback.
+        """
+        from django.conf import settings
+
+        if getattr(settings, 'ENABLE_UNDO_SYSTEM', False):
+            return self._create_with_undo(validated_data)
+        else:
+            return self._create_original(validated_data)
+
+    def _create_with_undo(self, validated_data):
+        """
+        Implementación con sistema de undo habilitado.
+        Usa CompraService para registrar la compra.
+        """
+        from usuarios.services.compra_service import CompraService
+
+        # Obtener user del contexto
+        user = self.context['request'].user
+
+        # Extraer datos
+        lineas_data = validated_data.pop("lineas", [])
+        proveedor_id = validated_data['proveedor'].id
+        incluye_iva = validated_data.get('incluye_iva', False)
+        fecha = validated_data.get('fecha')
+        numero = validated_data.get('numero', '')
+        categoria_id = validated_data.get('categoria').id if validated_data.get('categoria') else None
+        notas = validated_data.get('notas', '')
+
+        # Convertir lineas_data al formato esperado por CompraService
+        lineas_service = []
+        for linea_data in lineas_data:
+            linea_dict = {
+                'materia_prima': linea_data.get('materia_prima').id if linea_data.get('materia_prima') else None,
+                'descripcion': linea_data.get('descripcion', ''),
+                'cantidad': linea_data.get('cantidad'),
+                'precio_unitario': linea_data.get('precio_unitario'),
+                'total_linea': linea_data.get('total_linea')
+            }
+            lineas_service.append(linea_dict)
+
+        # Usar CompraService para crear la compra con undo
+        compra = CompraService.crear_compra(
+            user=user,
+            proveedor_id=proveedor_id,
+            lineas_data=lineas_service,
+            incluye_iva=incluye_iva,
+            fecha=fecha,
+            numero=numero,
+            categoria_id=categoria_id,
+            notas=notas
+        )
+
+        return compra
+
+    @transaction.atomic
+    def _create_original(self, validated_data):
+        """
+        Implementación original sin sistema de undo.
+        Se mantiene como fallback para compatibilidad.
+        """
         lineas_data = validated_data.pop("lineas", [])
         compra = Compra.objects.create(**validated_data)
         total = self._build_lineas(compra, lineas_data)
@@ -130,6 +196,7 @@ class CompraSerializer(serializers.ModelSerializer):
         self._sync_movimiento_financiero(compra, total)
         return compra
 
+    @transaction.atomic
     def update(self, instance, validated_data):
         lineas_data = validated_data.pop("lineas", None)
         for attr, value in validated_data.items():

@@ -476,3 +476,100 @@ class ConfiguracionSistemaViewSet(viewsets.ModelViewSet):
         config = self.get_object()
         serializer = self.get_serializer(config)
         return Response(serializer.data)
+
+
+# ==============================================================================
+# ENDPOINTS PARA SISTEMA DE UNDO
+# ==============================================================================
+
+from rest_framework.decorators import api_view, permission_classes
+from .services.undo_service import (
+    UndoService,
+    NoUndoableActionException,
+    CannotUndoException
+)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def undo_last(request):
+    """
+    POST /api/undo/last
+    Deshace la última acción del usuario.
+
+    Returns:
+        200 OK: Acción deshecha exitosamente
+        400 Bad Request: No hay acciones para deshacer o no se puede deshacer
+        500 Internal Server Error: Error inesperado
+    """
+    try:
+        result = UndoService.undo_last(request.user)
+
+        return Response({
+            'success': True,
+            'action_undone': result.description,
+            'message': f"Se deshizo: {result.description}",
+            'steps_completed': result.steps_completed
+        })
+
+    except NoUndoableActionException as e:
+        return Response({
+            'success': False,
+            'message': str(e)
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    except CannotUndoException as e:
+        return Response({
+            'success': False,
+            'message': str(e)
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    except Exception as e:
+        # Error inesperado - registrar en logs
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error inesperado en undo_last: {str(e)}", exc_info=True)
+
+        return Response({
+            'success': False,
+            'message': 'Error inesperado al deshacer la acción',
+            'error_detail': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def undo_availability(request):
+    """
+    GET /api/undo/availability
+    Retorna si hay una acción disponible para deshacer.
+
+    Returns:
+        200 OK: Información sobre disponibilidad de undo
+        {
+            "available": true/false,
+            "description": "Descripción de la acción",
+            "action_type": "CREATE_VENTA",
+            "created_at": "2026-01-21T14:30:00Z"
+        }
+    """
+    try:
+        availability = UndoService.get_availability(request.user)
+
+        return Response({
+            'available': availability['available'],
+            'description': availability.get('description'),
+            'action_type': availability.get('action_type'),
+            'created_at': availability.get('created_at')
+        })
+
+    except Exception as e:
+        # Error inesperado - registrar en logs
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error inesperado en undo_availability: {str(e)}", exc_info=True)
+
+        return Response({
+            'available': False,
+            'error': 'Error al verificar disponibilidad de undo'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

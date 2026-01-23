@@ -184,6 +184,40 @@ class CategoriaCompra(models.Model):
         return self.nombre
 
 
+# ============================================================================
+# MANAGERS PERSONALIZADOS PARA COMPRA
+# ============================================================================
+
+class CompraQuerySet(models.QuerySet):
+    """
+    QuerySet personalizado con métodos de filtrado para compras.
+    Permite filtrar compras activas vs anuladas sin romper queries existentes.
+    """
+
+    def activas(self):
+        """Solo compras no anuladas"""
+        return self.filter(anulada=False)
+
+    def anuladas(self):
+        """Solo compras anuladas"""
+        return self.filter(anulada=True)
+
+
+class CompraManager(models.Manager):
+    """Manager personalizado para Compra"""
+
+    def get_queryset(self):
+        return CompraQuerySet(self.model, using=self._db)
+
+    def activas(self):
+        """Retorna solo compras activas (no anuladas)"""
+        return self.get_queryset().activas()
+
+    def anuladas(self):
+        """Retorna solo compras anuladas"""
+        return self.get_queryset().anuladas()
+
+
 class Compra(models.Model):
     proveedor = models.ForeignKey(Proveedor, on_delete=models.PROTECT, related_name="compras")
     categoria = models.ForeignKey(
@@ -199,6 +233,22 @@ class Compra(models.Model):
     total = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"), help_text="Subtotal + IVA")
 
     notas = models.TextField(blank=True)
+
+    # Campos de anulación (para sistema de undo)
+    anulada = models.BooleanField(default=False, db_index=True, help_text="Marca si la compra fue anulada/deshecha")
+    fecha_anulacion = models.DateTimeField(null=True, blank=True, help_text="Fecha y hora en que se anuló la compra")
+    motivo_anulacion = models.CharField(max_length=255, blank=True, help_text="Motivo de la anulación")
+    anulada_por = models.ForeignKey(
+        'usuarios.Usuario',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='compras_anuladas',
+        help_text="Usuario que anuló la compra"
+    )
+
+    # Manager personalizado
+    objects = CompraManager()
 
     class Meta:
         ordering = ["-fecha", "-id"]

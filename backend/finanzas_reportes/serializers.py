@@ -40,27 +40,131 @@ class PagoClienteSerializer(serializers.ModelSerializer):
         )
 
     def create(self, validated_data):
-        # Crear el pago del cliente
-        pago = super().create(validated_data)
+        """
+        Crea un pago de cliente con soporte opcional de undo.
 
-        # Construir descripción con información de factura si aplica
-        descripcion_base = f"Pago recibido de {pago.cliente.nombre}"
-        if pago.venta:
-            descripcion_base += f" - Factura #{pago.venta.numero or pago.venta.id}"
-        descripcion_base += f" - {pago.get_medio_display()}"
+        Si ENABLE_UNDO_SYSTEM está activado, usa PagoService para registrar
+        el pago con capacidad de deshacer. Si está desactivado, usa la
+        implementación original como fallback.
+        """
+        from django.conf import settings
 
-        # Crear movimiento financiero de ingreso real
-        MovimientoFinanciero.objects.create(
-            fecha=pago.fecha,
-            tipo=MovimientoFinanciero.Tipo.INGRESO,
-            estado=MovimientoFinanciero.Estado.COBRADO,
-            origen=MovimientoFinanciero.Origen.MANUAL,
-            monto=pago.monto,
-            descripcion=descripcion_base,
-            medio_pago=pago.medio,
+        if getattr(settings, 'ENABLE_UNDO_SYSTEM', False):
+            return self._create_with_undo(validated_data)
+        else:
+            return self._create_original(validated_data)
+
+    def _create_with_undo(self, validated_data):
+        """
+        Implementación con sistema de undo habilitado.
+        Usa PagoService para registrar el pago.
+        """
+        from usuarios.services.pago_service import PagoService
+
+        # Obtener user del contexto
+        user = self.context['request'].user
+
+        # Extraer datos
+        cliente_id = validated_data['cliente'].id
+        monto = validated_data['monto']
+        medio = validated_data['medio']
+        fecha = validated_data.get('fecha')
+        observacion = validated_data.get('observacion', '')
+        venta_id = validated_data.get('venta').id if validated_data.get('venta') else None
+
+        # Usar PagoService para crear el pago con undo
+        pago = PagoService.registrar_pago(
+            user=user,
+            cliente_id=cliente_id,
+            monto=monto,
+            medio=medio,
+            fecha=fecha,
+            venta_id=venta_id,
+            observacion=observacion
         )
 
         return pago
+
+    def _create_original(self, validated_data):
+        """
+        Implementación original sin sistema de undo.
+        Se mantiene como fallback para compatibilidad.
+        """
+        from ventas.models import Venta
+        from decimal import Decimal
+        from django.db import transaction
+
+        with transaction.atomic():
+            # Crear el pago del cliente
+            pago = PagoCliente(**validated_data)
+            pago.save()
+
+            # Si el pago NO tiene venta asociada (pago "a cuenta"), aplicar FIFO
+            if not pago.venta:
+                self._aplicar_pago_fifo(pago)
+
+            # Si el pago SÍ tiene venta asociada (pago directo a factura específica)
+            else:
+                # Aplicar el pago directamente a la factura especificada
+                pago.venta.aplicar_pago(pago.monto)
+
+            # Construir descripción con información de factura si aplica
+            descripcion_base = f"Pago recibido de {pago.cliente.nombre}"
+            if pago.venta:
+                descripcion_base += f" - Factura #{pago.venta.numero or pago.venta.id}"
+            descripcion_base += f" - {pago.get_medio_display()}"
+
+            # Crear movimiento financiero de ingreso real
+            MovimientoFinanciero.objects.create(
+                fecha=pago.fecha,
+                tipo=MovimientoFinanciero.Tipo.INGRESO,
+                estado=MovimientoFinanciero.Estado.COBRADO,
+                origen=MovimientoFinanciero.Origen.MANUAL,
+                monto=pago.monto,
+                descripcion=descripcion_base,
+                medio_pago=pago.medio,
+            )
+
+            return pago
+
+    def _aplicar_pago_fifo(self, pago):
+        """
+        Aplica un pago "a cuenta" a las facturas pendientes más antiguas del cliente.
+        Método FIFO (First In, First Out): Las facturas más antiguas se pagan primero.
+        """
+        from ventas.models import Venta
+        from decimal import Decimal
+        from django.db import models as django_models
+
+        # Obtener facturas pendientes del cliente ordenadas por fecha (más antigua primero)
+        facturas_pendientes = Venta.objects.filter(
+            cliente=pago.cliente
+        ).exclude(
+            monto_pagado__gte=django_models.F('total')  # Excluir facturas ya pagadas completamente
+        ).order_by('fecha', 'id')  # FIFO: más antiguas primero
+
+        monto_restante = Decimal(str(pago.monto))
+        facturas_afectadas = []
+
+        # Aplicar el pago a cada factura en orden hasta agotar el monto
+        for factura in facturas_pendientes:
+            if monto_restante <= 0:
+                break
+
+            saldo_anterior = factura.saldo_pendiente
+
+            # Aplicar pago a esta factura (retorna el sobrante)
+            monto_restante = factura.aplicar_pago(monto_restante)
+
+            # Registrar qué facturas fueron afectadas
+            monto_aplicado = saldo_anterior - factura.saldo_pendiente
+            if monto_aplicado > 0:
+                facturas_afectadas.append(f"#{factura.numero or factura.id}: ${monto_aplicado}")
+
+        # Actualizar la observación del pago con las facturas afectadas
+        if facturas_afectadas:
+            pago.observacion = f"Pago a cuenta aplicado automáticamente (FIFO) a: {', '.join(facturas_afectadas)}"
+            pago.save(update_fields=['observacion'])
 
 
 class PagoProveedorSerializer(serializers.ModelSerializer):

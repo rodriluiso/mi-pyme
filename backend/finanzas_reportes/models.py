@@ -14,6 +14,40 @@ class MedioPago(models.TextChoices):
     CHEQUE = "CHEQUE", "Cheque"
 
 
+# ============================================================================
+# MANAGERS PERSONALIZADOS PARA PAGOCLIENTE
+# ============================================================================
+
+class PagoClienteQuerySet(models.QuerySet):
+    """
+    QuerySet personalizado con métodos de filtrado para pagos de clientes.
+    Permite filtrar pagos activos vs anulados sin romper queries existentes.
+    """
+
+    def activas(self):
+        """Solo pagos no anulados"""
+        return self.filter(anulado=False)
+
+    def anuladas(self):
+        """Solo pagos anulados"""
+        return self.filter(anulado=True)
+
+
+class PagoClienteManager(models.Manager):
+    """Manager personalizado para PagoCliente"""
+
+    def get_queryset(self):
+        return PagoClienteQuerySet(self.model, using=self._db)
+
+    def activas(self):
+        """Retorna solo pagos activos (no anulados)"""
+        return self.get_queryset().activas()
+
+    def anuladas(self):
+        """Retorna solo pagos anulados"""
+        return self.get_queryset().anuladas()
+
+
 class PagoCliente(models.Model):
     Medio = MedioPago
 
@@ -30,6 +64,21 @@ class PagoCliente(models.Model):
     monto = models.DecimalField(max_digits=12, decimal_places=2)
     medio = models.CharField(max_length=20, choices=MedioPago.choices, default=MedioPago.EFECTIVO)
     observacion = models.CharField(max_length=200, blank=True)
+
+    # Campos de anulación (para sistema de undo)
+    anulado = models.BooleanField(default=False, db_index=True, help_text="Marca si el pago fue anulado/deshecho")
+    fecha_anulacion = models.DateTimeField(null=True, blank=True, help_text="Fecha y hora en que se anuló el pago")
+    anulado_por = models.ForeignKey(
+        'usuarios.Usuario',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='pagos_anulados',
+        help_text="Usuario que anuló el pago"
+    )
+
+    # Manager personalizado
+    objects = PagoClienteManager()
 
     class Meta:
         ordering = ["-fecha", "-id"]
