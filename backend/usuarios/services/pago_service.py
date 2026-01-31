@@ -102,8 +102,8 @@ class PagoService:
             undo_payload['venta_numero'] = venta.numero or str(venta.id)
             undo_payload['monto_pagado_anterior'] = float(venta.monto_pagado)
 
-            # Aplicar pago
-            venta.aplicar_pago(monto)
+            # Aplicar pago CON imputación
+            venta.aplicar_pago(monto, pago=pago, crear_imputacion=True)
 
             descripcion_base = f"Pago de {cliente.nombre} - Factura #{venta.numero or venta.id}"
         else:
@@ -188,8 +188,12 @@ class PagoService:
             monto_pagado_anterior = factura.monto_pagado
             saldo_anterior = factura.saldo_pendiente
 
-            # Aplicar pago a esta factura (retorna el sobrante)
-            monto_restante = factura.aplicar_pago(monto_restante)
+            # Aplicar pago a esta factura (retorna el sobrante) CON imputación
+            monto_restante = factura.aplicar_pago(
+                monto_restante,
+                pago=pago,
+                crear_imputacion=True
+            )
 
             # Calcular cuánto se aplicó a esta factura
             monto_aplicado = saldo_anterior - factura.saldo_pendiente

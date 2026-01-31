@@ -88,6 +88,106 @@ class PagoCliente(models.Model):
         return f"Pago {self.monto} de {self.cliente.nombre} ({self.get_medio_display()}){venta_info}"
 
 
+class ImputacionPago(models.Model):
+    """
+    Tabla de imputación de pagos a facturas.
+
+    Registra exactamente qué monto de cada pago fue aplicado a qué factura.
+    Esto permite trazabilidad completa, auditoría y reversión segura.
+
+    Invariante contable:
+        SUM(imputaciones.monto_imputado WHERE revertida=False AND venta_id=X)
+        = Venta.monto_pagado
+
+    Ejemplo:
+        Pago #1 de $500 aplicado a:
+        - Factura #10: $300 → ImputacionPago(pago_id=1, venta_id=10, monto=300)
+        - Factura #11: $200 → ImputacionPago(pago_id=1, venta_id=11, monto=200)
+    """
+
+    pago = models.ForeignKey(
+        PagoCliente,
+        on_delete=models.PROTECT,
+        related_name="imputaciones",
+        help_text="Pago que se está aplicando"
+    )
+    venta = models.ForeignKey(
+        "ventas.Venta",
+        on_delete=models.PROTECT,
+        related_name="imputaciones",
+        help_text="Factura a la que se aplica el pago"
+    )
+    monto_imputado = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        help_text="Monto de este pago aplicado a esta factura"
+    )
+    fecha_imputacion = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Fecha y hora en que se registró la imputación"
+    )
+    revertida = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="True si esta imputación fue revertida (undo de pago)"
+    )
+    fecha_reversion = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Fecha y hora en que se revirtió la imputación"
+    )
+
+    # Campos de auditoría
+    observaciones = models.TextField(
+        blank=True,
+        help_text="Observaciones sobre esta imputación (ej: aplicada automáticamente por FIFO)"
+    )
+
+    class Meta:
+        ordering = ["-fecha_imputacion", "-id"]
+        verbose_name = "Imputación de Pago"
+        verbose_name_plural = "Imputaciones de Pago"
+
+        # Índices para performance
+        indexes = [
+            # Para obtener imputaciones activas de una factura
+            models.Index(fields=['venta', 'revertida'], name='idx_venta_activa'),
+            # Para obtener imputaciones de un pago
+            models.Index(fields=['pago', 'revertida'], name='idx_pago_activa'),
+            # Para queries por fecha
+            models.Index(fields=['fecha_imputacion'], name='idx_fecha_imput'),
+        ]
+
+        # Constraint: monto_imputado debe ser positivo
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(monto_imputado__gt=0),
+                name='monto_imputado_positivo'
+            ),
+        ]
+
+    def __str__(self):
+        estado = " [REVERTIDA]" if self.revertida else ""
+        return (
+            f"Imputación: Pago #{self.pago.id} → "
+            f"Factura #{self.venta.numero or self.venta.id} "
+            f"(${self.monto_imputado}){estado}"
+        )
+
+    def revertir(self):
+        """
+        Revierte esta imputación (usado por el sistema de undo).
+        NO borra el registro, solo lo marca como revertida.
+        """
+        if self.revertida:
+            raise ValueError("Esta imputación ya fue revertida")
+
+        from django.utils import timezone
+        self.revertida = True
+        self.fecha_reversion = timezone.now()
+        self.save(update_fields=['revertida', 'fecha_reversion'])
+
+
 class PagoProveedor(models.Model):
     Medio = MedioPago
 

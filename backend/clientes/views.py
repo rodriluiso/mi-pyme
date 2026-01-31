@@ -70,7 +70,8 @@ class ClienteViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
 
         Venta = apps.get_model("ventas", "Venta")
         if Venta is not None:
-            ventas_qs = Venta.objects.filter(cliente=cliente).order_by("-fecha", "-id")
+            # CRÍTICO: Filtrar solo ventas activas (no anuladas)
+            ventas_qs = Venta.objects.filter(cliente=cliente, anulada=False).order_by("-fecha", "-id")
             ventas = [
                 {"id": venta.id, "fecha": venta.fecha, "total": str(venta.total)}
                 for venta in ventas_qs[:200]
@@ -91,7 +92,8 @@ class ClienteViewSet(ModulePermissionMixin, viewsets.ModelViewSet):
 
         PagoCliente = apps.get_model("finanzas_reportes", "PagoCliente")
         if PagoCliente is not None:
-            pagos_qs = PagoCliente.objects.filter(cliente=cliente).order_by("-fecha", "-id")
+            # CRÍTICO: Filtrar solo pagos activos (no anulados)
+            pagos_qs = PagoCliente.objects.filter(cliente=cliente, anulado=False).order_by("-fecha", "-id")
             pagos = [
                 {
                     "id": pago.id,

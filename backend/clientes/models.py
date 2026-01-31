@@ -58,11 +58,29 @@ class Cliente(models.Model):
     @property
     def saldo(self):
         """
-        Calcula el saldo total del cliente (todas las sucursales):
-        total de ventas - total de pagos.
+        Calcula el saldo total del cliente (todas las sucursales).
+        SOLO considera ventas y pagos activos (no anulados).
+
+        Saldo = Σ(Ventas Activas) − Σ(Pagos Activos)
+
+        CRÍTICO: Filtra anulada=False y anulado=False para evitar
+        contar operaciones deshechas con el sistema de undo.
         """
-        total_ventas = sum(v.total for v in self.ventas.all())
-        total_pagos = sum(p.monto for p in self.pagos.all())
+        from django.db.models import Sum
+        from decimal import Decimal
+
+        # Sumar solo ventas NO anuladas
+        total_ventas_agg = self.ventas.filter(anulada=False).aggregate(
+            total=Sum('total')
+        )
+        total_ventas = total_ventas_agg['total'] or Decimal('0')
+
+        # Sumar solo pagos NO anulados
+        total_pagos_agg = self.pagos.filter(anulado=False).aggregate(
+            total=Sum('monto')
+        )
+        total_pagos = total_pagos_agg['total'] or Decimal('0')
+
         return total_ventas - total_pagos
 
 

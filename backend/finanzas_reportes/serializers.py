@@ -105,8 +105,8 @@ class PagoClienteSerializer(serializers.ModelSerializer):
 
             # Si el pago SÍ tiene venta asociada (pago directo a factura específica)
             else:
-                # Aplicar el pago directamente a la factura especificada
-                pago.venta.aplicar_pago(pago.monto)
+                # Aplicar el pago directamente a la factura especificada CON imputación
+                pago.venta.aplicar_pago(pago.monto, pago=pago, crear_imputacion=True)
 
             # Construir descripción con información de factura si aplica
             descripcion_base = f"Pago recibido de {pago.cliente.nombre}"
@@ -131,14 +131,18 @@ class PagoClienteSerializer(serializers.ModelSerializer):
         """
         Aplica un pago "a cuenta" a las facturas pendientes más antiguas del cliente.
         Método FIFO (First In, First Out): Las facturas más antiguas se pagan primero.
+
+        CRÍTICO: Solo aplica pagos a ventas activas (no anuladas).
         """
         from ventas.models import Venta
         from decimal import Decimal
         from django.db import models as django_models
 
         # Obtener facturas pendientes del cliente ordenadas por fecha (más antigua primero)
+        # CRÍTICO: Filtrar anulada=False para evitar aplicar pagos a ventas deshechas
         facturas_pendientes = Venta.objects.filter(
-            cliente=pago.cliente
+            cliente=pago.cliente,
+            anulada=False  # ✅ SOLO VENTAS ACTIVAS
         ).exclude(
             monto_pagado__gte=django_models.F('total')  # Excluir facturas ya pagadas completamente
         ).order_by('fecha', 'id')  # FIFO: más antiguas primero
@@ -153,8 +157,12 @@ class PagoClienteSerializer(serializers.ModelSerializer):
 
             saldo_anterior = factura.saldo_pendiente
 
-            # Aplicar pago a esta factura (retorna el sobrante)
-            monto_restante = factura.aplicar_pago(monto_restante)
+            # Aplicar pago a esta factura (retorna el sobrante) CON imputación
+            monto_restante = factura.aplicar_pago(
+                monto_restante,
+                pago=pago,
+                crear_imputacion=True
+            )
 
             # Registrar qué facturas fueron afectadas
             monto_aplicado = saldo_anterior - factura.saldo_pendiente
