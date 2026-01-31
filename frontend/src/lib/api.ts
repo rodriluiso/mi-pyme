@@ -8,7 +8,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
  * Obtiene el token de autenticación del localStorage
  */
 function getAuthToken(): string | null {
-  return localStorage.getItem('authToken');
+  return localStorage.getItem('auth_token');
 }
 
 /**
