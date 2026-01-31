@@ -4,6 +4,7 @@ import ModernSidebar from "@/components/navigation/ModernSidebar";
 import ModernHeader from "@/components/navigation/ModernHeader";
 import OfflineIndicator from "@/components/common/OfflineIndicator";
 import { useAppContext } from "@/contexts/AppContext";
+import { Toaster } from "@/components/ui/sonner";
 
 const RootLayout = () => {
   const { isDarkMode, isSidebarCollapsed } = useAppContext();
@@ -38,6 +39,9 @@ const RootLayout = () => {
 
         {/* Offline Indicator */}
         <OfflineIndicator />
+
+        {/* Toast notifications */}
+        <Toaster position="top-right" richColors />
       </div>
     </div>
   );

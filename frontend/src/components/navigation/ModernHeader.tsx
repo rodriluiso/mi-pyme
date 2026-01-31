@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAppContext } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { NavigationIcons } from "@/components/icons/NavigationIcons";
+import { UndoButton } from "@/components/UndoButton";
 
 interface ModernHeaderProps {
   onMenuClick: () => void;
@@ -139,6 +140,9 @@ const ModernHeader = ({ onMenuClick, title, breadcrumbs }: ModernHeaderProps) =>
 
         {/* Action buttons */}
         <div className="flex items-center gap-2">
+          {/* Undo button */}
+          <UndoButton />
+
           {/* Notifications */}
           <button
             className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
