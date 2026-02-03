@@ -203,4 +203,4 @@ LOGGING = {
 # Feature flag para habilitar/deshabilitar el sistema de deshacer (undo)
 # True = sistema de undo activo (registra acciones deshacibles)
 # Puede ser sobrescrito en dev.py, prod.py, etc.
-ENABLE_UNDO_SYSTEM = True
+ENABLE_UNDO_SYSTEM = False
